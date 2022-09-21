@@ -11,7 +11,7 @@ swapon /dev/sda2
 
 # bootstrap the install with the base packages
 pacstrap /mnt linux linux-firmware intel-ucode libva-intel-driver broadcom-wl \
-	efibootmgr base iwd networkmanager iptables-nft firewalld polkit \
+	efibootmgr base networkmanager iptables-nft firewalld polkit \
 	bash-completion man-db man-pages texinfo libfido2 sudo openssh \
 	git vim brightnessctl f2fs-tools \
 	pipewire-alsa pipewire-jack pipewire-pulse pipewire-docs \
