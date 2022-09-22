@@ -11,7 +11,8 @@ mount --mkdir /dev/sda1 /mnt/boot
 swapon /dev/sda2
 
 # bootstrap the install with the base packages
-pacstrap /mnt linux linux-firmware intel-ucode broadcom-wl \
+pacstrap /mnt linux \
+	linux-firmware intel-ucode broadcom-wl \
 	base f2fs-tools dosfstools \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
