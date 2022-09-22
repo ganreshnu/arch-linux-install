@@ -57,12 +57,12 @@ mount --mkdir /dev/sda1 /mnt/boot
 
 [ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl f2fs-tools"
 # bootstrap the install with the base packages
-pacstrap -i /mnt linux $firmware \
+pacstrap -i /mnt linux mkinitcpio $firmware \
 	base dosfstools \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
-	git
+	git arch-install-scripts
 
 # set the time
 arch-chroot /mnt /bin/bash <<EOD
@@ -115,7 +115,7 @@ git -C /mnt/etc/skel clone https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
 
-echo <<EOD
+cat <<EOD
 please add a user by running:
 arch-chroot /mnt
 useradd -m -G wheel,uucp john
@@ -124,7 +124,7 @@ exit
 
 EOD
 
-echo <<EOD
+cat <<EOD
 to finish the install run:
 umount -R /mnt
 reboot
