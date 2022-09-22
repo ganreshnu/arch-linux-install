@@ -1,26 +1,39 @@
 #!/bin/bash
 echo 'I hope you created the partitions!'
+
 timedatectl set-ntp true
-mkfs.f2fs -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
 mkswap /dev/sda2
 mkfs.fat -F 32 /dev/sda1
 
-mount -o compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime /dev/sda3 /mnt
+mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
 mount --mkdir /dev/sda1 /mnt/boot
 swapon /dev/sda2
 
 # bootstrap the install with the base packages
-pacstrap /mnt linux linux-firmware intel-ucode libva-intel-driver broadcom-wl \
-	efibootmgr base networkmanager iptables-nft firewalld polkit \
-	bash-completion man-db man-pages texinfo libfido2 sudo openssh \
-	git vim brightnessctl f2fs-tools \
-	pipewire-alsa pipewire-jack pipewire-pulse pipewire-docs \
-	noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
-	dosfstools
+pacstrap /mnt linux linux-firmware intel-ucode broadcom-wl \
+	base f2fs-tools dosfstools \
+	iptables-nft networkmanager firewalld polkit \
+	bash-completion man-db man-pages texinfo \
+	libfido2 sudo openssh \
+	git
 
-# generate the fstab
+# set the time
+arch-chroot /mnt /bin/bash <<EOD
+ln -sf /usr/share/zoneinfo/US/Central /etc/localtime
+hwclock --systohc
+EOD
+
+# generate the fstab -- compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime
 genfstab -U /mnt >> /mnt/etc/fstab
-# compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime
+
+# enable the required services
+arch-chroot /mnt /bin/bash <<EOD
+systemctl enable NetworkManager
+systemctl enable systemd-resolved
+systemctl enable firewalld
+systemctl mask systemd-backlight@backlight\:acpi_video0.service
+EOD
 
 # setup the system language
 LANG=en_US.UTF-8
@@ -28,29 +41,50 @@ LANG=en_US.UTF-8
 sed -i "/$LANG/s/^#//g" /mnt/etc/locale.gen
 # set the lang environment variable
 echo "LANG=$LANG" > /mnt/etc/locale.conf
+# generate the language files
+arch-chroot /mnt /bin/bash locale-gen
 
 # set the hostname
 echo "jasmine" > /mnt/etc/hostname
+
 # enable wheel group in sudoers
 grep wheel /mnt/etc/sudoers | tail -n1 | cut -c3- > /mnt/etc/sudoers.d/wheel
+# copy the nopassword policykit config
+cp etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
 
-arch-chroot /mnt /bin/bash <<EOD
-ln -sf /usr/share/zoneinfo/US/Central /etc/localtime
-hwclock --systohc
-locale-gen
+# copy the profile scripts
+cp etc/profile.d/* /mnt/etc/profile.d/
+
+# make the xdg config dir in skel
+mkdir /mnt/etc/skel/.config
+# copy the systemd user environment config files
+cp -r dot-config/environment.d /mnt/etc/skel/.config/
+
+# install the gnupg config
+git -C /mnt/etc/skel/.config clone https://github.com/ganreshnu/config-gnupg.git gnupg
+chmod go-rwx /mnt/etc/skel/.config/gnupg
+
+# install the ssh config
+git -C /mnt/etc/skel clone https://github.com/ganreshnu/config-openssh.git .ssh
+ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
+echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
+
+echo <<EOD
+please add a user by running:
+arch-chroot /mnt
 useradd -m -G wheel,uucp john
-systemctl enable NetworkManager
-systemctl enable systemd-resolved
-systemctl enable firewalld
-systemctl mask systemd-backlight@backlight\:acpi_video0.service
+passwd john
+exit
+
 EOD
 
-echo "set password now"
+echo <<EOD
+to finish the install run:
+umount -R /mnt
+reboot
 
-#umount -R /mnt
-#echo "Safe to reboot now"
+EOD
 
-#pacman -S sway swaybg swayidle swaylock bemenu-wayland alacritty firefox
 
 #uuidroot=$(blkid |awk -F\" '/sda3/ { print $8 }')
 #uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
