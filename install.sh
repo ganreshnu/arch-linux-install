@@ -55,10 +55,10 @@ mkfs.fat -F 32 /dev/sda1
 mount --mkdir /dev/sda1 /mnt/boot
 
 
-[ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl"
+[ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl f2fs-tools"
 # bootstrap the install with the base packages
-pacstrap /mnt linux $firmware \
-	base f2fs-tools dosfstools \
+pacstrap -i /mnt linux $firmware \
+	base dosfstools \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
