@@ -54,11 +54,10 @@ fi
 mkfs.fat -F 32 /dev/sda1
 mount --mkdir /dev/sda1 /mnt/boot
 
-
 [ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl f2fs-tools"
 # bootstrap the install with the base packages
 pacstrap -i /mnt linux mkinitcpio $firmware \
-	base dosfstools \
+	base dosfstools btrfs-progs \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
@@ -118,8 +117,8 @@ echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
 cat <<EOD
 please add a user by running:
 arch-chroot /mnt
-useradd -m -G wheel,uucp john
-passwd john
+useradd -m -G wheel,uucp <USER>
+passwd <USER>
 exit
 
 EOD
@@ -131,7 +130,8 @@ reboot
 
 EOD
 
-
 #uuidroot=$(blkid |awk -F\" '/sda3/ { print $8 }')
 #uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
 #efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw initrd=\intel-ucode.img initrd=\initramfs-linux.img"
+
+# vim: ts=3 sw=1 sts=0
