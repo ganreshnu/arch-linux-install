@@ -1,18 +1,63 @@
 #!/bin/bash
-echo 'I hope you created the partitions!'
+
+function showhelp() {
+	cat <<EOD
+Usage: install.sh [OPTIONS]
+
+Install an Arch Linux Distribution.
+
+Options:
+  --vm		Runs on a virtual machine
+EOD
+}
+
+usefirmware=1
+wanthelp=0
+while :
+do
+	if [[ "$1" == --* ]]; then
+		case "$1" in
+			--help )
+				wanthelp=1
+				shift
+				;;
+			--vm )
+				usefirmware=0
+				shift
+				;;
+			* )
+				>&2 echo "unknown option: $1"
+				wanthelp=2
+				shift
+				;;
+		esac
+	else
+		break
+	fi
+done
+[ $wanthelp -eq 1 ] && showhelp && exit
+[ $wanthelp -eq 2 ] && showhelp && exit 1
 
 timedatectl set-ntp true
-mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-mkswap /dev/sda2
-mkfs.fat -F 32 /dev/sda1
 
-mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
-mount --mkdir /dev/sda1 /mnt/boot
+mkswap /dev/sda2
 swapon /dev/sda2
 
+if [[ $usefirmware -eq 1 ]]; then
+	mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+	mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
+else
+	mkfs.ext4 /dev/sda3
+	mount /dev/sda3 /mnt
+fi
+
+mkfs.fat -F 32 /dev/sda1
+mount --mkdir /dev/sda1 /mnt/boot
+
+
+[ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl"
 # bootstrap the install with the base packages
-pacstrap /mnt linux \
-	linux-firmware intel-ucode broadcom-wl \
+pacstrap /mnt linux $firmware \
 	base f2fs-tools dosfstools \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
