@@ -57,7 +57,7 @@ mount --mkdir /dev/sda1 /mnt/boot
 [ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl f2fs-tools"
 # bootstrap the install with the base packages
 pacstrap -i /mnt linux mkinitcpio $firmware \
-	base dosfstools btrfs-progs \
+	base efibootmgr dosfstools btrfs-progs \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
