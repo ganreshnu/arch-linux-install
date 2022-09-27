@@ -61,7 +61,7 @@ pacstrap -i /mnt linux mkinitcpio $firmware \
 	iptables-nft networkmanager firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
-	git arch-install-scripts
+	git arch-install-scripts vim
 
 # set the time
 arch-chroot /mnt /bin/bash <<EOD
@@ -77,7 +77,7 @@ arch-chroot /mnt /bin/bash <<EOD
 systemctl enable NetworkManager
 systemctl enable systemd-resolved
 systemctl enable firewalld
-systemctl mask systemd-backlight@backlight\:acpi_video0.service
+#systemctl mask systemd-backlight@backlight\:acpi_video0.service
 EOD
 
 # setup the system language
@@ -130,8 +130,8 @@ reboot
 
 EOD
 
-#uuidroot=$(blkid |awk -F\" '/sda3/ { print $8 }')
+#uuidroot=$(blkid |awk -F\" '/sda3/ { print $10 }')
 #uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
-#efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw initrd=\intel-ucode.img initrd=\initramfs-linux.img"
+#efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw quiet i915.fastboot=1 consoleblank=1 initrd=\intel-ucode.img initrd=\initramfs-linux.img"
 
 # vim: ts=3 sw=1 sts=0
