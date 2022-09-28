@@ -2,12 +2,9 @@
 
 function showhelp() {
 	cat <<EOD
-Usage: install.sh [OPTIONS] HOSTNAME
+Usage: install.sh HOSTNAME
 
 Install an Arch Linux Distribution.
-
-Options:
-  --vm		Runs on a virtual machine
 EOD
 }
 
