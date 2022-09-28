@@ -133,7 +133,17 @@ ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 
 # setup the bootloader
 bootctl --esp-path=/mnt/boot install
-cp $here/boot/loader/entries/fallback.conf /mnt/boot/loader/entries/
+
+[[ ! $isvm ]] && fallbackopts="i915.fastboot=1 acpi_backlight=vendor"
+cat > /mnt/boot/loader/entries/fallback.conf <<EOD
+title		Arch Linux (fallback)
+linux		/vmlinuz-linux
+initrd	/initramfs.img
+options	root=PARTLABEL=archlinux resume=PARTLABEL=swap
+options	rw quiet consoleblank=60 $fallbackopts
+EOD
+
+#cp $here/boot/loader/entries/fallback.conf /mnt/boot/loader/entries/
 [[ ! $isvm ]] && microcode="--microcode /mnt/boot/intel-ucode.img"
 [[ ! $isvm ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 
