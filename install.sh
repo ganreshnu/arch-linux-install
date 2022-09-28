@@ -31,13 +31,14 @@ do
 	fi
 done
 
+[[ $wanthelp -eq 1 ]] && showhelp && exit
+
 hostname=$1
 if [[ ! $hostname ]]; then
  	>&2 echo "must declare hostname"
 	wanthelp=2
 fi
 
-[[ $wanthelp -eq 1 ]] && showhelp && exit
 [[ $wanthelp -eq 2 ]] && showhelp && exit 1
 
 set -e
