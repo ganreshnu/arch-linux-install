@@ -58,7 +58,7 @@ mount --mkdir /dev/sda1 /mnt/boot
 # bootstrap the install with the base packages
 pacstrap -i /mnt linux mkinitcpio $firmware \
 	base efibootmgr dosfstools btrfs-progs \
-	iptables-nft networkmanager firewalld polkit \
+	iptables-nft iwd firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	libfido2 sudo openssh \
 	git arch-install-scripts vim
@@ -74,9 +74,10 @@ genfstab -U /mnt >> /mnt/etc/fstab
 
 # enable the required services
 arch-chroot /mnt /bin/bash <<EOD
-systemctl enable NetworkManager
-systemctl enable systemd-resolved
-systemctl enable firewalld
+systemctl enable iwd.service
+systemctl enable systemd-networkd.service
+#systemctl enable systemd-resolved.service
+systemctl enable firewalld.service
 #systemctl mask systemd-backlight@backlight\:acpi_video0.service
 EOD
 
