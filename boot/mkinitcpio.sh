@@ -11,12 +11,15 @@ Options:
   --module			Additional modules to add
   --resume			The resume partition
   --opt				A kernel option (may be passed multiple times)
+  --esp-path		Alternate esp path (default /boot)
+  --reboot			Reboot after install
 
 EOD
 }
 
 opts=()
 modules=()
+esp_path=/boot
 wanthelp=0
 while :
 do
@@ -45,6 +48,14 @@ do
 			--opt )
 			 	opts+=("$2")
 				shift 2
+				;;
+			--esp-path )
+				esp_path=$2
+				shift 2
+				;;
+			--reboot )
+				reboot=yes
+				shift
 				;;
 			* )
 				>&2 echo "unknown option $1"
@@ -96,12 +107,13 @@ MODULES=($mods)
 HOOKS=(keyboard autodetect systemd modconf block filesystems fsck)
 EOD
 mkinitcpio --config $config_file --splash /usr/share/systemd/bootctl/splash-arch.bmp \
-	--cmdline $cmdline_file --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
+	--cmdline $cmdline_file --uefi $esp_path/EFI/Linux/arch-systemd.efi $microcode
 
 #mkinitcpio --config $here/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline_file --uefi /boot/EFI/Linux/arch-systemd.efi --microcode /boot/intel-ucode.img
 rm $cmdline_file
 rm $config_file
 
+[[ $reboot ]] && reboot now
 #echo "i915.fastboot=1 quiet consoleblank=60 acpi_backlight=vendor" > $cmdline
 #echo "root=PARTLABEL=archlinux resume=PARTLABEL=swap i915.fastboot=1 quiet consoleblank=60 acpi_backlight=vendor" > $cmdline
 
