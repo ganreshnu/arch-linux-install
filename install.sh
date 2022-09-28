@@ -158,6 +158,9 @@ ConditionFirstBoot=yes
 [Service]
 Type=oneshot
 ExecStart=/root/arch-linux-install/boot/mkinitcpio.sh --reboot --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+
+[Install]
+WantedBy=multi-user.target
 EOD
 arch-chroot /mnt systemctl enable firstboot.service
 
