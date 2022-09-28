@@ -12,6 +12,7 @@ EOD
 }
 
 isvm=$(dmesg |grep "Hypervisor detected")
+[ $isvm ] && isvm=yes
 
 wanthelp=0
 while :
