@@ -2,7 +2,7 @@
 
 function showhelp() {
 	cat <<EOD
-Usage: install.sh [OPTIONS]
+Usage: install.sh [OPTIONS] HOSTNAME
 
 Install an Arch Linux Distribution.
 
@@ -11,7 +11,8 @@ Options:
 EOD
 }
 
-usefirmware=1
+isvm=$(dmesg |grep "Hypervisor detected")
+
 wanthelp=0
 while :
 do
@@ -19,10 +20,6 @@ do
 		case "$1" in
 			--help )
 				wanthelp=1
-				shift
-				;;
-			--vm )
-				usefirmware=0
 				shift
 				;;
 			* )
@@ -35,30 +32,37 @@ do
 		break
 	fi
 done
+
+hostname=$1
+[ ! $hostname ] && showhelp && exit 1
 [ $wanthelp -eq 1 ] && showhelp && exit
 [ $wanthelp -eq 2 ] && showhelp && exit 1
 
+here=$(dirname $BASH_SOURCE)
+
 timedatectl set-ntp true
 
-mkswap /dev/sda2
-swapon /dev/sda2
-
-if [[ $usefirmware -eq 1 ]]; then
-	mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-	mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
-else
+if [ $isvm ]; then
 	mkfs.ext4 /dev/sda3
 	mount /dev/sda3 /mnt
+	filesystem=ext4
+else
+	mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+	mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
+	filsystem=f2fs
 fi
 
 mkfs.fat -F 32 /dev/sda1
 mount --mkdir /dev/sda1 /mnt/boot
 
-[ $usefirmware -eq 1 ] && firmware="linux-firmware intel-ucode broadcom-wl f2fs-tools"
+mkswap /dev/sda2
+swapon /dev/sda2
+
+[ ! $isvm ] && firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
 # bootstrap the install with the base packages
 pacstrap -i /mnt linux mkinitcpio $firmware \
 	base efibootmgr dosfstools btrfs-progs \
-	iptables-nft iwd firewalld polkit \
+	iptables-nft firewalld polkit \
 	bash-completion man-db man-pages texinfo \
 	tpm2-tss libfido2 sudo openssh \
 	git arch-install-scripts vim
@@ -73,10 +77,11 @@ EOD
 genfstab -U /mnt >> /mnt/etc/fstab
 
 # enable the required services
+[ ! $isvm ] && arch-chroot /mnt systemctl enable iwd.service
+
 arch-chroot /mnt /bin/bash <<EOD
-systemctl enable iwd.service
 systemctl enable systemd-networkd.service
-#systemctl enable systemd-resolved.service
+systemctl enable systemd-resolved.service
 systemctl enable firewalld.service
 EOD
 
@@ -87,41 +92,41 @@ sed -i "/$LANG/s/^#//g" /mnt/etc/locale.gen
 # set the lang environment variable
 echo "LANG=$LANG" > /mnt/etc/locale.conf
 # generate the language files
-arch-chroot /mnt /bin/bash locale-gen
+arch-chroot /mnt locale-gen
 
 # set the hostname
-echo "jasmine" > /mnt/etc/hostname
+echo $hostname > /mnt/etc/hostname
 
 # enable wheel group in sudoers
 awk '/wheel/ && /NOPASSWD/' /mnt/etc/sudoers | cut -c3- > /mnt/etc/sudoers.d/wheel
 # copy the nopassword policykit config
-cp etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
+cp $here/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
 
 # copy the profile scripts
-cp etc/profile.d/* /mnt/etc/profile.d/
+cp $here/etc/profile.d/* /mnt/etc/profile.d/
 
 # make the xdg config dir in skel
 mkdir /mnt/etc/skel/.config
 # copy the systemd user environment config files
-cp -r dot-config/environment.d /mnt/etc/skel/.config/
+cp -r $here/dot-config/environment.d /mnt/etc/skel/.config/
 
 # install the gnupg config
-git -C /mnt/etc/skel/.config clone https://github.com/ganreshnu/config-gnupg.git gnupg
+git -C /mnt/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
 chmod go-rwx /mnt/etc/skel/.config/gnupg
 echo '. $GNUPGHOME/.rc' >> /mnt/etc/skel/.bashrc
 
 # install the ssh config
-git -C /mnt/etc/skel clone https://github.com/ganreshnu/config-openssh.git .ssh
+git -C /mnt/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 
 # setup the bootloader
 bootctl --esp-path=/mnt/boot install
-boot/mkinitcpio.sh --resume PARTLABEL=swap --module vfat PARTLABEL=archlinux
-#mkinitcpio --config boot/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
-#cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
-#cp boot/loader/entries/* /mnt/boot/loader/entries/
+[ ! $isvm ] && microcode=/mnt/boot/intel-ucode.img
+boot/mkinitcpio.sh --resume PARTLABEL=swap --module vfat --module $filesystem $microcode PARTLABEL=archlinux
 
 cat <<EOD
+
+------------------------------
 please add a user by running:
 arch-chroot /mnt
 useradd -m -G wheel,uucp <USER>
@@ -131,13 +136,14 @@ exit
 EOD
 
 cat <<EOD
+
+-------------------------
 to finish the install run:
 umount -R /mnt
 reboot
 
 EOD
 
-swapoff /dev/sda2
 #uuidroot=$(blkid |awk -F\" '/sda3/ { print $10 }')
 #uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
 #efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw quiet i915.fastboot=1 consoleblank=1 initrd=\intel-ucode.img initrd=\initramfs-linux.img"
