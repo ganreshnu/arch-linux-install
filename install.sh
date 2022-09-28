@@ -152,19 +152,22 @@ EOD
 [[ ! $isvm ]] && microcode="--microcode /mnt/boot/intel-ucode.img"
 [[ ! $isvm ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 
-cat > /mnt/etc/systemd/system/firstboot.service <<EOD
+cat > /mnt/etc/systemd/system/mkunifiedimage.service <<EOD
 [Unit]
-Description=First Boot Script
-ConditionFirstBoot=yes
+Description=Make unified kernel image
+After=local-fs.target
+ConditionFileExists=!/boot/EFI/Linux/arch-systemd.efi
 
 [Service]
 Type=oneshot
+RemainAfterExit=true
 ExecStart=/root/arch-linux-install/boot/mkinitcpio.sh --reboot --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+ExecStartPost=systemctl disable mkunifiedimage.service
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target
 EOD
-arch-chroot /mnt systemctl enable firstboot.service
+arch-chroot /mnt systemctl enable mkunifiedimage.service
 
 cat <<EOD
 
