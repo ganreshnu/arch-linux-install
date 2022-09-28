@@ -47,7 +47,7 @@ if [[ $usefirmware -eq 1 ]]; then
 	mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
 	mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
 else
-	mkfs.ext4 -f /dev/sda3
+	mkfs.ext4 /dev/sda3
 	mount /dev/sda3 /mnt
 fi
 
