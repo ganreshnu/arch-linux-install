@@ -60,7 +60,12 @@ mount --mkdir /dev/sda1 /mnt/boot
 mkswap /dev/sda2
 swapon /dev/sda2
 
-[ ! $isvm ] && firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
+if [ $isvm ]; then
+	firmware="e2fsprogs"
+else
+	firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
+fi
+
 # bootstrap the install with the base packages
 pacstrap -i /mnt linux mkinitcpio $firmware \
 	base efibootmgr dosfstools btrfs-progs \
