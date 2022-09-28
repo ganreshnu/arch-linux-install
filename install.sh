@@ -60,7 +60,7 @@ pacstrap -i /mnt linux mkinitcpio $firmware \
 	base efibootmgr dosfstools btrfs-progs \
 	iptables-nft iwd firewalld polkit \
 	bash-completion man-db man-pages texinfo \
-	libfido2 sudo openssh \
+	tpm2-tss libfido2 sudo openssh \
 	git arch-install-scripts vim
 
 # set the time
