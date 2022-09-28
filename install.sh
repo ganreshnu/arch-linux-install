@@ -141,7 +141,7 @@ bootctl --esp-path=/mnt/boot install
 cat > /mnt/boot/loader/entries/fallback.conf <<EOD
 title		Arch Linux (fallback)
 linux		/vmlinuz-linux
-initrd	/initramfs.img
+initrd	/initramfs-linux.img
 options	root=PARTLABEL=archlinux resume=PARTLABEL=swap
 options	rw quiet consoleblank=60 $fallbackopts
 EOD
