@@ -108,15 +108,15 @@ cp -r dot-config/environment.d /mnt/etc/skel/.config/
 # install the gnupg config
 git -C /mnt/etc/skel/.config clone https://github.com/ganreshnu/config-gnupg.git gnupg
 chmod go-rwx /mnt/etc/skel/.config/gnupg
+echo '. $GNUPGHOME/.rc' >> /mnt/etc/skel/.bashrc
 
 # install the ssh config
 git -C /mnt/etc/skel clone https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
-echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
 
 # setup the bootloader
 bootctl --esp-path=/mnt/boot install
-boot/mkinitcpio.sh --resume PARTLABEL=swap PARTLABEL=archlinux
+boot/mkinitcpio.sh --resume PARTLABEL=swap --module vfat PARTLABEL=archlinux
 #mkinitcpio --config boot/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
 #cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
 #cp boot/loader/entries/* /mnt/boot/loader/entries/
