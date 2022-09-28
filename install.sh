@@ -131,6 +131,9 @@ EOD
 git -C /mnt/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 
+# install this repo
+git -C /mnt/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
+
 # setup the bootloader
 bootctl --esp-path=/mnt/boot install
 
