@@ -78,7 +78,6 @@ systemctl enable iwd.service
 systemctl enable systemd-networkd.service
 #systemctl enable systemd-resolved.service
 systemctl enable firewalld.service
-#systemctl mask systemd-backlight@backlight\:acpi_video0.service
 EOD
 
 # setup the system language
@@ -94,7 +93,7 @@ arch-chroot /mnt /bin/bash locale-gen
 echo "jasmine" > /mnt/etc/hostname
 
 # enable wheel group in sudoers
-grep wheel /mnt/etc/sudoers | tail -n1 | cut -c3- > /mnt/etc/sudoers.d/wheel
+awk '/wheel/ && /NOPASSWD/' /mnt/etc/sudoers | cut -c3- > /mnt/etc/sudoers.d/wheel
 # copy the nopassword policykit config
 cp etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
 
@@ -114,6 +113,11 @@ chmod go-rwx /mnt/etc/skel/.config/gnupg
 git -C /mnt/etc/skel clone https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
+
+# setup the bootloader
+arch-chroot /mnt /bin/bash bootctl install
+cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
+cp boot/loader/entries/* /mnt/boot/loader/entries/
 
 cat <<EOD
 please add a user by running:
