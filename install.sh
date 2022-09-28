@@ -17,7 +17,7 @@ isvm=$(dmesg |grep "Hypervisor detected")
 wanthelp=0
 while :
 do
-	if [[ "$1" == --* ]]; then
+	if [[ $1 == --* ]]; then
 		case "$1" in
 			--help )
 				wanthelp=1
@@ -35,16 +35,16 @@ do
 done
 
 hostname=$1
-[ ! $hostname ] && showhelp && exit 1
-[ $wanthelp -eq 1 ] && showhelp && exit
-[ $wanthelp -eq 2 ] && showhelp && exit 1
+[[ ! $hostname ]] && showhelp && exit 1
+[[ $wanthelp -eq 1 ]] && showhelp && exit
+[[ $wanthelp -eq 2 ]] && showhelp && exit 1
 
 set -e
 here=$(dirname $BASH_SOURCE)
 
 timedatectl set-ntp true
 
-if [ $isvm ]; then
+if [[ $isvm ]]; then
 	mkfs.ext4 /dev/sda3
 	mount /dev/sda3 /mnt
 	filesystem=ext4
@@ -60,7 +60,7 @@ mount --mkdir /dev/sda1 /mnt/boot
 mkswap /dev/sda2
 swapon /dev/sda2
 
-if [ $isvm ]; then
+if [[ $isvm ]]; then
 	firmware="e2fsprogs"
 else
 	firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
@@ -84,7 +84,7 @@ EOD
 genfstab -U /mnt >> /mnt/etc/fstab
 
 # enable the required services
-[ ! $isvm ] && arch-chroot /mnt systemctl enable iwd.service
+[[ ! $isvm ]] && arch-chroot /mnt systemctl enable iwd.service
 
 arch-chroot /mnt /bin/bash <<EOD
 systemctl enable systemd-networkd.service
@@ -120,8 +120,13 @@ cp -r $here/dot-config/environment.d /mnt/etc/skel/.config/
 # install the gnupg config
 git -C /mnt/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
 chmod go-rwx /mnt/etc/skel/.config/gnupg
-echo '. $GNUPGHOME/.rc' >> /mnt/etc/skel/.bashrc
+cat >> /mnt/etc/skel/.bashrc <<'EOD'
 
+# BEGIN set by install.sh
+. $GNUPGHOME/.rc
+set -o vi
+# END set by install.sh
+EOD
 # install the ssh config
 git -C /mnt/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
