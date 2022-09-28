@@ -12,7 +12,7 @@ EOD
 }
 
 isvm=$(dmesg |grep "Hypervisor detected")
-[ $isvm ] && isvm=yes
+[ "$isvm" ] && isvm=yes
 
 wanthelp=0
 while :
@@ -44,7 +44,7 @@ here=$(dirname $BASH_SOURCE)
 
 timedatectl set-ntp true
 
-if [[ $isvm ]]; then
+if [ $isvm ]; then
 	mkfs.ext4 /dev/sda3
 	mount /dev/sda3 /mnt
 	filesystem=ext4
