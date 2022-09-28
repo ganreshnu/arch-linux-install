@@ -6,9 +6,11 @@ Usage: mkinitcpio.sh [OPTIONS] ROOT_PARTITION
 Make a kernel initial filesystem.
 
 Options:
-  --microcode	Microcode to run first
-  --resume		The resume partition
-  --opt			A kernel option (may be passed multiple times)
+  --cmdline			Show commandline and exit
+  --microcode		Microcode to run first
+  --module			Additional modules to add
+  --resume			The resume partition
+  --opt				A kernel option (may be passed multiple times)
 
 EOD
 }
@@ -22,6 +24,10 @@ do
 		case "$1" in
 			--help )
 				wanthelp=1
+				shift
+				;;
+			--cmdline )
+				showcmdline=yes
 				shift
 				;;
 			--microcode )
@@ -62,9 +68,6 @@ fi
 # directory containing this script
 here=$(dirname $BASH_SOURCE)
 
-# setup the microcode argument
-[ $microcode ] && microcode="--microcode $microcode"
-
 # generate command line
 cmdline_file=$(mktemp)
 cmdline="root=$1 quiet consoleblank=60"
@@ -73,6 +76,15 @@ for i in ${opts[@]}; do
 	cmdline="$cmdline $i"
 done
 echo $cmdline > $cmdline_file
+
+if [ $showcmdline ]; then
+	cat $cmdline_file
+	rm $cmdline_file
+	exit
+fi
+
+# setup the microcode argument
+[ $microcode ] && microcode="--microcode $microcode"
 
 # generate config file
 for i in ${modules[@]}; do
@@ -83,8 +95,6 @@ cat > $config_file <<EOD
 MODULES=($mods)
 HOOKS=(keyboard autodetect systemd modconf block filesystems fsck)
 EOD
-cat $config_file
-cat $cmdline_file
 mkinitcpio --config $config_file --splash /usr/share/systemd/bootctl/splash-arch.bmp \
 	--cmdline $cmdline_file --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
 
