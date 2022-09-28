@@ -115,9 +115,12 @@ ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
 
 # setup the bootloader
-arch-chroot /mnt /bin/bash bootctl install
-cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
-cp boot/loader/entries/* /mnt/boot/loader/entries/
+arch-chroot /mnt /bin/bash "bootctl install"
+
+boot/mkinitcpio.sh --resume PARTLABEL=swap PARTLABEL=archlinux
+#mkinitcpio --config boot/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
+#cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
+#cp boot/loader/entries/* /mnt/boot/loader/entries/
 
 cat <<EOD
 please add a user by running:
@@ -135,6 +138,7 @@ reboot
 
 EOD
 
+swapoff /dev/sda2
 #uuidroot=$(blkid |awk -F\" '/sda3/ { print $10 }')
 #uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
 #efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw quiet i915.fastboot=1 consoleblank=1 initrd=\intel-ucode.img initrd=\initramfs-linux.img"
