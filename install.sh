@@ -122,7 +122,7 @@ ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 # setup the bootloader
 bootctl --esp-path=/mnt/boot install
 [ ! $isvm ] && microcode=/mnt/boot/intel-ucode.img
-boot/mkinitcpio.sh --resume PARTLABEL=swap --module vfat --module $filesystem $microcode PARTLABEL=archlinux
+$here/boot/mkinitcpio.sh --resume PARTLABEL=swap --module vfat --module $filesystem $microcode PARTLABEL=archlinux
 
 cat <<EOD
 
