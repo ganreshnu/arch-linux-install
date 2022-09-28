@@ -86,7 +86,7 @@ EOD
 cat $config_file
 cat $cmdline_file
 mkinitcpio --config $config_file --splash /usr/share/systemd/bootctl/splash-arch.bmp \
-	--cmdline $cmdline_file --uefi mnt/boot/EFI/Linux/arch-systemd.efi $microcode
+	--cmdline $cmdline_file --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
 
 #mkinitcpio --config $here/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline_file --uefi /boot/EFI/Linux/arch-systemd.efi --microcode /boot/intel-ucode.img
 rm $cmdline_file
