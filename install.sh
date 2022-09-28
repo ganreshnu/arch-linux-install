@@ -115,8 +115,7 @@ ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
 echo '. $HOME/.ssh/profile' >> /mnt/etc/skel/.bashrc
 
 # setup the bootloader
-arch-chroot /mnt /bin/bash "bootctl install"
-
+bootctl --esp-path=/mnt/boot install
 boot/mkinitcpio.sh --resume PARTLABEL=swap PARTLABEL=archlinux
 #mkinitcpio --config boot/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline --uefi /mnt/boot/EFI/Linux/arch-systemd.efi $microcode
 #cp boot/loader/loader.conf /mnt/boot/loader/loader.conf
