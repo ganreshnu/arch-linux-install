@@ -76,11 +76,6 @@ pacstrap -i /mnt linux mkinitcpio $firmware \
 	tpm2-tss libfido2 sudo openssh \
 	git arch-install-scripts vim
 
-# set the time
-arch-chroot /mnt /bin/bash <<EOD
-ln -sf /usr/share/zoneinfo/US/Central /etc/localtime
-hwclock --systohc
-EOD
 
 # generate the fstab -- compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -94,25 +89,48 @@ systemctl enable systemd-resolved.service
 systemctl enable firewalld.service
 EOD
 
-# setup the system language
-LANG=en_US.UTF-8
+# setup the hw clock
+arch-chroot /mnt hwclock --systohc
+
+
 # uncomment language from /mnt/etc/locale.gen
-sed -i "/$LANG/s/^#//g" /mnt/etc/locale.gen
-# set the lang environment variable
-echo "LANG=$LANG" > /mnt/etc/locale.conf
+sed -i \
+	-e "/en_US.UTF-8/s/^#//g" \
+	/mnt/etc/locale.gen
+
 # generate the language files
 arch-chroot /mnt locale-gen
 
+#arch-chroot /mnt /bin/bash <<EOD
+#ln -sf /usr/share/zoneinfo/US/Central /etc/localtime
+#hwclock --systohc
+#EOD
+
+# set the lang environment variable
+#echo "LANG=$LANG" > /mnt/etc/locale.conf
+
 # set the hostname
-echo $hostname > /mnt/etc/hostname
+#echo $hostname > /mnt/etc/hostname
+
+rm /mnt/etc/machine-id
+mkdir -p /mnt/etc/systemd/system/systemd-firstboot.service.d
+cat > /mnt/etc/systemd/system/systemd-firstboot.service.d/override.conf <<EOD
+[Service]
+ExecStart=/usr/bin/systemd-firstboot --prompt
+
+[Install]
+WantedBy=sysinit.target
+EOD
+arch-chroot /mnt systemctl enable systemd-firstboot.service
 
 # enable wheel group in sudoers
 awk '/wheel/ && /NOPASSWD/' /mnt/etc/sudoers | cut -c3- > /mnt/etc/sudoers.d/wheel
 # copy the nopassword policykit config
 cp $here/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
 
-# copy the profile scripts
+# copy the bash profile scripts
 cp $here/etc/profile.d/* /mnt/etc/profile.d/
+
 
 # make the xdg config dir in skel
 mkdir /mnt/etc/skel/.config
@@ -129,6 +147,7 @@ cat >> /mnt/etc/skel/.bashrc <<'EOD'
 set -o vi
 # END set by install.sh
 EOD
+
 # install the ssh config
 git -C /mnt/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
