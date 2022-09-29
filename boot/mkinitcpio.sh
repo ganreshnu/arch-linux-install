@@ -3,7 +3,7 @@ function showhelp() {
 	cat <<EOD
 Usage: mkinitcpio.sh [OPTIONS] ROOT_PARTITION
 
-Make a kernel initial filesystem.
+Make a kernel initial filesystem. Outputs esp-path/EFI/Linux/archlinux-systemd.efi
 
 Options:
   --cmdline			Show commandline and exit
@@ -107,7 +107,7 @@ MODULES=($mods)
 HOOKS=(keyboard autodetect systemd modconf block filesystems fsck)
 EOD
 mkinitcpio --config $config_file --splash /usr/share/systemd/bootctl/splash-arch.bmp \
-	--cmdline $cmdline_file --uefi $esp_path/EFI/Linux/arch-systemd.efi $microcode
+	--cmdline $cmdline_file --uefi $esp_path/EFI/Linux/archlinux-systemd.efi $microcode
 
 #mkinitcpio --config $here/mkinitcpio-systemd.conf --splash /usr/share/systemd/bootctl/splash-arch.bmp --cmdline $cmdline_file --uefi /boot/EFI/Linux/arch-systemd.efi --microcode /boot/intel-ucode.img
 rm $cmdline_file
