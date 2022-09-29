@@ -157,11 +157,12 @@ cat > /mnt/etc/systemd/system/mkunifiedimage.service <<EOD
 Description=Make unified kernel image
 After=local-fs.target
 ConditionFileExists=!/boot/EFI/Linux/arch-systemd.efi
+SuccessAction=reboot
 
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/root/arch-linux-install/boot/mkinitcpio.sh --reboot --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+ExecStart=/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
 ExecStartPost=systemctl disable mkunifiedimage.service
 
 [Install]
