@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bash -eo pipefail
+
 showhelp() {
 	cat <<EOD
 Usage: mkinitcpio.sh [OPTIONS] ROOT_PARTITION

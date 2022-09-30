@@ -1,29 +1,93 @@
-#!/bin/bash -eo pipefail
+#!/bin/bash
 
-showhelp() {
+#
+# install.sh
+#
+# Install an archlinux system.
+#
+
+#
+# something is running the script
+#
+if [[ "$0" == "$BASH_SOURCE" ]]; then
+set -euo pipefail
+
+#
+# define a usage function
+#
+usage() {
 	cat <<EOD
-Usage: install.sh HOSTNAME
+Usage: $(basename "$BASH_SOURCE") [OPTIONS]
+
+Options:
+  --help                       Show this message and exit.
+  --hypervisor HYPERVISOR      Force a specific hypervisor.
+  --root DIRECTORY             The directory in which to install.
 
 Install an Arch Linux Distribution.
 EOD
 }
 
-main() {
-	local isvm=$(dmesg |grep "Hypervisor detected")
-	[[ $isvm ]] && isvm=yes
-	
-	local wanthelp=0
-	while :
-	do
-		if [[ $1 == --* ]]; then
+#
+# define an error function
+#
+error() {
+	>&2 printf "$(tput bold; tput setaf 1)error:$(tput sgr0) %s\n" "$@"
+	showusage=1
+}
+
+#
+# define the main encapsulation function
+#
+install_dot_sh() {
+	local here=$(dirname $BASH_SOURCE)
+	local showusage=-1
+
+	#
+	# declare the variables derived from the arguments
+	#
+	local hypervisor=$(dmesg |grep "Hypervisor detected")
+	hypervisor="${hypervisor#*: }"
+
+	local root="$root"
+
+	#
+	# parse the arguments
+	#
+	while true; do
+		if [[ $# -gt 0 && "$1" == -* ]]; then
 			case "$1" in
+				--hypervisor )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						hypervisor="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
+				--root )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						root="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
 				--help )
-					wanthelp=1
+					showusage=0
 					shift
 					;;
+				-- )
+					shift
+					break
+					;;
 				* )
-					>&2 echo "unknown option: $1"
-					wanthelp=2
+					error "unknown argument $1"
+					showusage=1
 					shift
 					;;
 			esac
@@ -32,46 +96,67 @@ main() {
 		fi
 	done
 	
-	[[ $wanthelp -eq 1 ]] && showhelp && exit
-	
-	local hostname=$1
-	if [[ ! $hostname ]]; then
-	 	>&2 echo "must declare hostname"
-		wanthelp=2
+	#
+	# argument validation goes here
+	#
+		
+	#
+	# show help if necessary
+	#
+	if [[ $showusage -ne -1 ]]; then
+		usage
+		return $showusage
 	fi
 	
-	[[ $wanthelp -eq 2 ]] && showhelp && exit 1
-	
-	local here=$(dirname $BASH_SOURCE)
-	
+	#
+	# value validation goes here
+	#
+
+	#
+	# script begins
+	#
+
+	# immediately set the time
 	timedatectl set-ntp true
 	
-	local filesystem
-	if [[ $isvm ]]; then
-		mkfs.ext4 /dev/sda3
-		mount /dev/sda3 /mnt
-		filesystem=ext4
-	else
-		mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-		mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 /mnt
-		filsystem=f2fs
+	#
+	# format the physical disks if present
+	#
+	local has_swap=0 has_boot=0 has_root=0
+	[[ $(blkid | grep 'PARTLABEL="swap"') ]] && has_swap=1
+	[[ $(blkid | grep 'PARTLABEL="boot"') ]] && has_boot=1
+	[[ $(blkid | grep 'PARTLABEL="archlinux"') ]] && has_root=1
+
+	if [[ $has_root -eq 1 && $has_boot -eq 1 ]]; then
+		if [[ "$hypervisor" ]]; then
+			mkfs.ext4 /dev/sda3
+			mount /dev/sda3 "$root"
+		else
+			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$root"
+		fi
+
+		mkfs.fat -F 32 /dev/sda1
+		mount --mkdir /dev/sda1 $root/boot
+	
+		# setup the bootloader
+		bootctl --esp-path=$root/boot install
 	fi
 	
-	mkfs.fat -F 32 /dev/sda1
-	mount --mkdir /dev/sda1 /mnt/boot
-	
-	mkswap /dev/sda2
-	swapon /dev/sda2
-	
+	if [[ $has_swap -eq 1 ]]; then
+		mkswap /dev/sda2
+		swapon /dev/sda2
+	fi
+
 	local firmware
-	if [[ $isvm ]]; then
+	if [[ "$hypervisor" ]]; then
 		firmware="e2fsprogs"
 	else
 		firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
 	fi
 	
 	# bootstrap the install with the base packages
-	pacstrap -i /mnt linux mkinitcpio $firmware \
+	pacstrap -i $root linux mkinitcpio $firmware \
 		base dosfstools btrfs-progs \
 		iptables-nft firewalld polkit \
 		bash-completion man-db man-pages texinfo \
@@ -80,12 +165,12 @@ main() {
 	
 	
 	# generate the fstab -- compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime
-	genfstab -U /mnt >> /mnt/etc/fstab
+	genfstab -U $root >> $root/etc/fstab
 	
 	# enable the required services
-	[[ ! $isvm ]] && arch-chroot /mnt systemctl enable iwd.service
+	[[ ! "$hypervisor" ]] && arch-chroot $root systemctl enable iwd.service
 	
-	arch-chroot /mnt /bin/bash <<-EOD
+	arch-chroot $root /bin/bash <<-EOD
 	systemctl enable systemd-networkd.service
 	systemctl enable systemd-resolved.service
 	ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
@@ -93,66 +178,60 @@ main() {
 EOD
 	
 	# setup the hw clock
-	arch-chroot /mnt hwclock --systohc
+	arch-chroot $root hwclock --systohc
 	
 	
-	# uncomment language from /mnt/etc/locale.gen
+	# uncomment language from $root/etc/locale.gen
 	sed -i \
 		-e "/en_US.UTF-8/s/^#//g" \
-		/mnt/etc/locale.gen
+		$root/etc/locale.gen
 	
 	# generate the language files
-	arch-chroot /mnt locale-gen
+	arch-chroot $root locale-gen
 	
-	rm /mnt/etc/machine-id
-	mkdir -p /mnt/etc/systemd/system/systemd-firstboot.service.d
-	cat > /mnt/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
+	# enable the firstboot service
+	mkdir -p $root/etc/systemd/system/systemd-firstboot.service.d
+	cat > $root/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
 	[Service]
 	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-keymap --prompt-timezone --prompt-hostname
 	
 	[Install]
 	WantedBy=sysinit.target
 EOD
-	arch-chroot /mnt systemctl enable systemd-firstboot.service
+	rm $root/etc/machine-id
+	arch-chroot $root systemctl enable systemd-firstboot.service
 	
-	# enable wheel group in sudoers
-	awk '/wheel/ && /NOPASSWD/' /mnt/etc/sudoers | cut -c3- > /mnt/etc/sudoers.d/wheel
-	# copy the nopassword policykit config
-	cp $here/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/
-	
-	# copy the bash profile scripts
-	cp $here/etc/profile.d/* /mnt/etc/profile.d/
-	
-	
-	# make the xdg config dir in skel
-	mkdir /mnt/etc/skel/.config
-	# copy the systemd user environment config files
-	cp -r $here/dot-config/environment.d /mnt/etc/skel/.config/
-	
+	# install the root /etc dropins
+	local git_split="git -C /etc --git-dir=$HOME/config-etc --work-tree=/etc"
+	$git_split clone https://github.com/ganreshnu/config-etc.git
+	$git_split config --local status.showUntrackedFiles no
+
+	# make the xdg config dir in skel along with the environment.d dir
+	mkdir -p $root/etc/skel/.config/environment.d
+	# install the readline config
+	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
+	echo 'INPUTRC=$HOME/.config/readline/inputrc' > $root/etc/skel/.config/environment.d/50-readline.conf
+
 	# install the gnupg config
-	git -C /mnt/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
-	chmod go-rwx /mnt/etc/skel/.config/gnupg
-	cat >> /mnt/etc/skel/.bashrc <<-'EOD'
-	
-	# BEGIN set by install.sh
-	. $GNUPGHOME/.rc
-	set -o vi
-	# END set by install.sh
-EOD
-	
+	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
+	chmod go-rwx $root/etc/skel/.config/gnupg
+	echo 'GNUPGHOME=$HOME/.config/gnupg' > $root/etc/skel/.config/environment.d/20-gnupg.conf
+	echo '. $GNUPGHOME/.rc' >> $root/etc/skel/.bashrc
+
 	# install the ssh config
-	git -C /mnt/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
-	ssh-keyscan github.com > /mnt/etc/skel/.ssh/known_hosts
-	
+	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
+	ssh-keyscan github.com > $root/etc/skel/.ssh/known_hosts
+
+	# install the bash config
+	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
+	cat $root/etc/skel/.bashrc  $root/etc/skel/.config/bash/bashrc > $root/etc/skel/.config/bash/bashrc
+
 	# install this repo
-	git -C /mnt/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
-	
-	# setup the bootloader
-	bootctl --esp-path=/mnt/boot install
+	git -C $root/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
 	
 	local fallbackopts
-	[[ ! $isvm ]] && fallbackopts="i915.fastboot=1 acpi_backlight=vendor"
-	cat > /mnt/boot/loader/entries/fallback.conf <<-EOD
+	[[ ! "$hypervisor" ]] && fallbackopts="i915.fastboot=1 acpi_backlight=vendor"
+	cat > $root/boot/loader/entries/fallback.conf <<-EOD
 	title		Arch Linux (fallback)
 	linux		/vmlinuz-linux
 	initrd	/initramfs-linux.img
@@ -160,13 +239,12 @@ EOD
 	options	rw quiet consoleblank=60 $fallbackopts
 EOD
 	
-	#cp $here/boot/loader/entries/fallback.conf /mnt/boot/loader/entries/
 	local microcode
-	[[ ! $isvm ]] && microcode="--microcode /mnt/boot/intel-ucode.img"
+	[[ ! "$hypervisor" ]] && microcode="--microcode $root/boot/intel-ucode.img"
 	local opts
-	[[ ! $isvm ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
+	[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 	
-	cat > /mnt/etc/systemd/system/mkunifiedimage.service <<-EOD
+	cat > $root/etc/systemd/system/mkunifiedimage.service <<-EOD
 	[Unit]
 	Description=Make unified kernel image
 	After=local-fs.target
@@ -182,13 +260,13 @@ EOD
 	[Install]
 	WantedBy=graphical.target
 EOD
-	arch-chroot /mnt systemctl enable mkunifiedimage.service
+	arch-chroot $root systemctl enable mkunifiedimage.service
 	
 	cat <<-EOD
 	
 	------------------------------
 	please add a user by running:
-	arch-chroot /mnt
+	arch-chroot $root
 	useradd -m -G wheel,uucp <USER>
 	passwd <USER>
 	exit
@@ -199,15 +277,50 @@ EOD
 	
 	-------------------------
 	to finish the install run:
-	umount -R /mnt
+	umount -R $root
 	reboot
 	
 EOD
 }
+install_dot_sh "$@"
 
-main "$@"
-#uuidroot=$(blkid |awk -F\" '/sda3/ { print $10 }')
-#uuidswap=$(blkid |awk -F\" '/sda2/ { print $6 }')
-#efibootmgr --disk /dev/sda --part 1 --create --label "Arch Linux" --loader /vmlinuz-linux --unicode "root=PARTUUID=$uuidroot resume=PARTUUID=$uuidswap rw quiet i915.fastboot=1 consoleblank=1 initrd=\intel-ucode.img initrd=\initramfs-linux.img"
+#
+# script has been sourced
+#
+else
+set -uo pipefail
+_install_dot_sh_completions() {
+	local completions="$($1 --help |sed -e '/^  -/!d' \
+		-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\5\n\3=\5/' \
+		-e 's/^  \(--[[:alnum:]]\+\)\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\3/')"
+
+	declare -A completion
+	for c in $completions; do
+		local key="${c%=*}"
+		[[ "$key" ]] && completion[$key]="${c#*=}"
+	done
+	completions="${!completion[@]}"
+
+	[[ $# -lt 3 ]] && local prev="$1" || prev="$3"
+	[[ $# -lt 2 ]] && local cur="" || cur="$2"
+
+	local type=""
+	[[ ${completion[$prev]+_} ]] && type=${completion[$prev]}
+
+	case "$type" in
+	FILENAME )
+	 	COMPREPLY=($(compgen -f -- "$cur"))
+		;;
+	DIRECTORY )
+		COMPREPLY=($(compgen -d -- "$cur"))
+		;;
+	* )
+		COMPREPLY=($(compgen -W "$completions" -- "$cur"))
+		compopt +o filenames
+		;;
+	esac
+}
+complete -o filenames -o noquote -o bashdefault -o default -F _install_dot_sh_completions install.sh
+fi
 
 # vim: ts=3 sw=1 sts=0
