@@ -176,6 +176,33 @@ install_dot_sh() {
 	systemctl enable firewalld.service
 EOD
 	
+	cat > $root/etc/systemd/network/ethernet.network <<-'EOD'
+	[Match]
+	Name=e*
+
+	[Network]
+	DHCP=ipv4
+
+	[DHCPv4]
+	RouteMetric=10
+
+	[IPv6AcceptRA]
+	RouteMetric=10
+EOD
+	cat > $root/etc/systemd/network/wireless.network <<-'EOD'
+	[Match]
+	Name=w*
+
+	[Network]
+	DHCP=ipv4
+
+	[DHCPv4]
+	RouteMetric=20
+
+	[IPv6AcceptRA]
+	RouteMetric=20
+EOD
+
 	# setup the hw clock
 	arch-chroot $root hwclock --systohc
 	
@@ -193,6 +220,7 @@ EOD
 	[Service]
 	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-keymap --prompt-timezone --prompt-hostname
 	ExecStart=ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+	ExecStart=systemctl start mkunifiedimage.service
 	
 	[Install]
 	WantedBy=sysinit.target
@@ -260,19 +288,14 @@ EOD
 	[Unit]
 	Description=Make unified kernel image
 	After=local-fs.target
-	ConditionPathExists=!/boot/EFI/Linux/archlinux-systemd.efi
 	
 	[Service]
 	Type=oneshot
 	RemainAfterExit=true
-	ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --reboot --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+	ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
 	StandardOutput=inherit
 	StandardError=journal+console
-	
-	[Install]
-	WantedBy=graphical.target
 EOD
-	arch-chroot $root systemctl enable mkunifiedimage.service
 	
 	cat <<-EOD
 	
