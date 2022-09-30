@@ -152,11 +152,11 @@ install_dot_sh() {
 	if [[ "$hypervisor" ]]; then
 		firmware="e2fsprogs"
 	else
-		firmware="linux-firmware wireless-regdb intel-ucode broadcom-wl iwd f2fs-tools"
+		firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
 	fi
 	
 	# bootstrap the install with the base packages
-	pacstrap -i $root linux mkinitcpio $firmware \
+	pacstrap -i $root linux wireless-regdb mkinitcpio $firmware \
 		base dosfstools btrfs-progs \
 		iptables-nft firewalld polkit \
 		bash-completion man-db man-pages texinfo \
@@ -223,8 +223,8 @@ EOD
 	ssh-keyscan github.com > $root/etc/skel/.ssh/known_hosts
 
 	# install the vim config
-	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-vim.git vim
-	printf "export VIMINIT='%s | %s'" 'let $MYVIMRC=$HOME/.config/vim/vimrc' 'source $MYVIMRC' >> $root/etc/skel/.bashrc
+	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
+	printf "export VIMINIT='%s | %s'\n" 'let $MYVIMRC = "$HOME/.config/vim/vimrc"' 'source $MYVIMRC' >> $root/etc/skel/.bashrc
 
 	# install the bash config
 	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
