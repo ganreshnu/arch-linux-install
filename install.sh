@@ -173,7 +173,6 @@ install_dot_sh() {
 	arch-chroot $root /bin/bash <<-EOD
 	systemctl enable systemd-networkd.service
 	systemctl enable systemd-resolved.service
-	ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 	systemctl enable firewalld.service
 EOD
 	
@@ -194,6 +193,7 @@ EOD
 	cat > $root/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
 	[Service]
 	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-keymap --prompt-timezone --prompt-hostname
+	ExecStart=ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 	
 	[Install]
 	WantedBy=sysinit.target
@@ -203,9 +203,9 @@ EOD
 	
 	# install the root /etc dropins
 	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
-	local git_split="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=/etc"
-	$git_split config --local status.showUntrackedFiles no
-	$git_split checkout
+	local git_etc="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=/etc"
+	$git_etc config --local status.showUntrackedFiles no
+	$git_etc checkout
 
 	# make the xdg config dir in skel along with the environment.d dir
 	mkdir -p $root/etc/skel/.config/environment.d
@@ -225,7 +225,7 @@ EOD
 
 	# install the vim config
 	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-vim.git vim
-	echo "VIMINIT='let \$MYVIMRC="\$HOME/.config/vim/vimrc" | source $MYVIMRC'" > $root/etc/skel/.config/environment.d/50-vim.conf
+	printf "export VIMINIT='%s | %s'" 'let $MYVIMRC=$HOME/.config/vim/vimrc' 'source $MYVIMRC' >> $root/etc/skel/.bashrc
 
 	# install the bash config
 	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
