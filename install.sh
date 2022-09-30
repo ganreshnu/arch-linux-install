@@ -152,7 +152,7 @@ install_dot_sh() {
 	if [[ "$hypervisor" ]]; then
 		firmware="e2fsprogs"
 	else
-		firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
+		firmware="linux-firmware wireless-regdb intel-ucode broadcom-wl iwd f2fs-tools"
 	fi
 	
 	# bootstrap the install with the base packages

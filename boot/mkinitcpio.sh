@@ -23,11 +23,11 @@ main() {
 	local opts=()
 	local modules=()
 	local esp_path=/boot
-	local showcmdline
-	local microcode
+	local showcmdline=""
+	local microcode=""
 	local wanthelp=0
-	local resume
-	local reboot
+	local resume=""
+	local reboot=""
 	while :
 	do
 		if [[ "$1" == --* ]]; then
