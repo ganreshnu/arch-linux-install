@@ -280,7 +280,7 @@ EOD
 EOD
 	
 	local microcode=""
-	[[ ! "$hypervisor" ]] && microcode="--microcode $root/boot/intel-ucode.img"
+	[[ ! "$hypervisor" ]] && microcode="--microcode /boot/intel-ucode.img"
 	local opts=""
 	[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 	
