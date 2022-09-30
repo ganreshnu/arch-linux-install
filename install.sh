@@ -241,7 +241,7 @@ EOD
 	# install this repo
 	git -C $root/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
 	
-	local fallbackopts
+	local fallbackopts=""
 	[[ ! "$hypervisor" ]] && fallbackopts="i915.fastboot=1 acpi_backlight=vendor"
 	cat > $root/boot/loader/entries/fallback.conf <<-EOD
 	title		Arch Linux (fallback)
@@ -251,9 +251,9 @@ EOD
 	options	rw quiet consoleblank=60 $fallbackopts
 EOD
 	
-	local microcode
+	local microcode=""
 	[[ ! "$hypervisor" ]] && microcode="--microcode $root/boot/intel-ucode.img"
-	local opts
+	local opts=""
 	[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 	
 	cat > $root/etc/systemd/system/mkunifiedimage.service <<-EOD
