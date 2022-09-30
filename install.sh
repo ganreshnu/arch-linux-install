@@ -179,7 +179,6 @@ EOD
 	# setup the hw clock
 	arch-chroot $root hwclock --systohc
 	
-	
 	# uncomment language from $root/etc/locale.gen
 	sed -i \
 		-e "/en_US.UTF-8/s/^#//g" \
@@ -203,7 +202,7 @@ EOD
 	
 	# install the root /etc dropins
 	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
-	local git_etc="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=/etc"
+	local git_etc="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=$root/etc"
 	$git_etc config --local status.showUntrackedFiles no
 	$git_etc checkout
 
