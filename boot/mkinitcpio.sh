@@ -105,7 +105,7 @@ main() {
 	[[ $microcode ]] && microcode="--microcode $microcode"
 	
 	# generate config file
-	local mods
+	local mods=""
 	for i in ${modules[@]}; do
 		mods="$mods $i"
 	done
