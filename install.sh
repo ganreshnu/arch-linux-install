@@ -202,9 +202,10 @@ EOD
 	arch-chroot $root systemctl enable systemd-firstboot.service
 	
 	# install the root /etc dropins
-	local git_split="git -C /etc --git-dir=$HOME/config-etc --work-tree=/etc"
-	$git_split clone https://github.com/ganreshnu/config-etc.git
+	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
+	local git_split="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=/etc"
 	$git_split config --local status.showUntrackedFiles no
+	$git_split checkout
 
 	# make the xdg config dir in skel along with the environment.d dir
 	mkdir -p $root/etc/skel/.config/environment.d
