@@ -22,7 +22,7 @@ Usage: $(basename "$BASH_SOURCE") [OPTIONS]
 Options:
   --help                       Show this message and exit.
   --hypervisor HYPERVISOR      Force a specific hypervisor.
-  --root DIRECTORY             The directory in which to install.
+  --root DIRECTORY             The directory in which to install. Defaults to /mnt.
 
 Install an Arch Linux Distribution.
 EOD
