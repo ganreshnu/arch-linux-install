@@ -49,7 +49,7 @@ install_dot_sh() {
 	local hypervisor=$(dmesg |grep "Hypervisor detected")
 	hypervisor="${hypervisor#*: }"
 
-	local root="$root"
+	local root="/mnt"
 
 	#
 	# parse the arguments
