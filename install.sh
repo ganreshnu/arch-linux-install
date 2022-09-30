@@ -222,9 +222,21 @@ EOD
 	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 	ssh-keyscan github.com > $root/etc/skel/.ssh/known_hosts
 
+	# install the vim config
+	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-vim.git vim
+	echo "VIMINIT='let \$MYVIMRC="\$HOME/.config/vim/vimrc" | source $MYVIMRC'" > $root/etc/skel/.config/environment.d/50-vim.conf
+
 	# install the bash config
 	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-	cat $root/etc/skel/.bashrc  $root/etc/skel/.config/bash/bashrc > $root/etc/skel/.config/bash/bashrc
+	cat $root/etc/skel/.bashrc  $root/etc/skel/.config/bash/bashrc.sh > $root/etc/skel/.config/bash/bashrc
+	cat $root/etc/skel/.bash_profile $root/etc/skel/.config/bash/bash_profile.sh > $root/etc/skel/.config/bash/bash_profile
+	rm $root/etc/skel/.bash_profile $root/etc/skel/.bashrc $root/etc/skel/.bash_logout
+
+	arch-chroot $root /bin/bash <<-EOD
+	cd /etc/skel
+	ln -s .config/bash/bashrc .bashrc
+	ln -s .config/bash/bash_completion .bash_completion
+EOD
 
 	# install this repo
 	git -C $root/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
