@@ -1,4 +1,5 @@
-#!/bin/bash -eo pipefail
+#!/bin/bash
+set -euo pipefail
 
 showhelp() {
 	cat <<EOD
