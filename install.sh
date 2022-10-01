@@ -7,12 +7,6 @@
 #
 
 #
-# something is running the script
-#
-if [[ "$0" == "$BASH_SOURCE" ]]; then
-set -euo pipefail
-
-#
 # define a usage function
 #
 usage() {
@@ -28,6 +22,56 @@ Install an Arch Linux Distribution.
 EOD
 }
 
+
+#
+# script autocomplete
+#
+if [[ "$0" != "$BASH_SOURCE" ]]; then
+	set -uo pipefail
+
+	# generic autocomplete function that parses the script help
+	_install_dot_sh_completions() {
+		local completions="$(usage |sed -e '/^  -/!d' \
+			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\5\n\3=\5/' \
+			-e 's/^  \(--[[:alnum:]]\+\)\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\3/')"
+
+		declare -A completion
+		for c in $completions; do
+			local key="${c%=*}"
+			[[ "$key" ]] && completion[$key]="${c#*=}"
+		done;
+		completions="${!completion[@]}"
+
+		[[ $# -lt 3 ]] && local prev="$1" || prev="$3"
+		[[ $# -lt 2 ]] && local cur="" || cur="$2"
+
+		local type=""
+		[[ ${completion[$prev]+_} ]] && type=${completion[$prev]}
+
+		case "$type" in
+		FILENAME )
+			COMPREPLY=($(compgen -f -- "$cur"))
+			compopt -o filenames -o noquote
+			;;
+		DIRECTORY )
+			COMPREPLY=($(compgen -d -- "$cur"))
+			compopt -o filenames -o noquote
+			;;
+		* )
+			COMPREPLY=($(compgen -W "$completions" -- "$cur"))
+			;;
+		esac
+	}
+	complete -o bashdefault -o default -F _install_dot_sh_completions install.sh
+	return
+fi
+
+
+#
+# something is running the script
+#
+set -euo pipefail
+
 #
 # define an error function
 #
@@ -39,9 +83,7 @@ error() {
 #
 # define the main encapsulation function
 #
-install_dot_sh() {
-	local here=$(dirname $BASH_SOURCE)
-	local showusage=-1
+install_dot_sh() { local showusage=-1
 
 	#
 	# declare the variables derived from the arguments
@@ -175,7 +217,7 @@ install_dot_sh() {
 	systemctl enable systemd-resolved.service
 	systemctl enable firewalld.service
 EOD
-	
+	# setup the ethernet network
 	cat > $root/etc/systemd/network/ethernet.network <<-'EOD'
 	[Match]
 	Name=e*
@@ -189,6 +231,8 @@ EOD
 	[IPv6AcceptRA]
 	RouteMetric=10
 EOD
+	
+	# setup the wireless network
 	cat > $root/etc/systemd/network/wireless.network <<-'EOD'
 	[Match]
 	Name=w*
@@ -319,43 +363,4 @@ EOD
 }
 install_dot_sh "$@"
 
-#
-# script has been sourced
-#
-else
-set -uo pipefail
-_install_dot_sh_completions() {
-	local completions="$($1 --help |sed -e '/^  -/!d' \
-		-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\5\n\3=\5/' \
-		-e 's/^  \(--[[:alnum:]]\+\)\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\3/')"
-
-	declare -A completion
-	for c in $completions; do
-		local key="${c%=*}"
-		[[ "$key" ]] && completion[$key]="${c#*=}"
-	done
-	completions="${!completion[@]}"
-
-	[[ $# -lt 3 ]] && local prev="$1" || prev="$3"
-	[[ $# -lt 2 ]] && local cur="" || cur="$2"
-
-	local type=""
-	[[ ${completion[$prev]+_} ]] && type=${completion[$prev]}
-
-	case "$type" in
-	FILENAME )
-	 	COMPREPLY=($(compgen -f -- "$cur"))
-		;;
-	DIRECTORY )
-		COMPREPLY=($(compgen -d -- "$cur"))
-		;;
-	* )
-		COMPREPLY=($(compgen -W "$completions" -- "$cur"))
-		compopt +o filenames
-		;;
-	esac
-}
-complete -o filenames -o noquote -o bashdefault -o default -F _install_dot_sh_completions install.sh
-fi
-
-# vim: ts=3 sw=1 sts=0
+# vim: ts=3 sw=3 sts=0
