@@ -14,9 +14,10 @@ usage() {
 Usage: $(basename "$BASH_SOURCE") [OPTIONS]
 
 Options:
-  --help                       Show this message and exit.
-  --hypervisor HYPERVISOR      Force a specific hypervisor.
-  --root DIRECTORY             The directory in which to install. Defaults to /mnt.
+  --help                         Show this message and exit.
+  --hypervisor HYPERVISOR        Force a specific hypervisor.
+  --root DIRECTORY               The directory in which to install. Defaults
+                                 to /mnt.
 
 Install an Arch Linux Distribution.
 EOD
@@ -32,14 +33,14 @@ if [[ "$0" != "$BASH_SOURCE" ]]; then
 	# generic autocomplete function that parses the script help
 	_install_dot_sh_completions() {
 		local completions="$(usage |sed -e '/^  -/!d' \
-			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\5\n\3=\5/' \
-			-e 's/^  \(--[[:alnum:]]\+\)\( \(FILENAME\|DIRECTORY\)\)\?.*/\1=\3/')"
+			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\5\n\3=\5/' \
+			-e 's/^  \(--[[:alnum:]]\+\)\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\3/')"
 
 		declare -A completion
 		for c in $completions; do
 			local key="${c%=*}"
 			[[ "$key" ]] && completion[$key]="${c#*=}"
-		done;
+		done
 		completions="${!completion[@]}"
 
 		[[ $# -lt 3 ]] && local prev="$1" || prev="$3"
@@ -51,18 +52,20 @@ if [[ "$0" != "$BASH_SOURCE" ]]; then
 		case "$type" in
 		FILENAME )
 			COMPREPLY=($(compgen -f -- "$cur"))
-			compopt -o filenames -o noquote
+			compopt -o filenames
 			;;
 		DIRECTORY )
 			COMPREPLY=($(compgen -d -- "$cur"))
-			compopt -o filenames -o noquote
+			compopt -o filenames
+			;;
+		[A-Z]* )
 			;;
 		* )
 			COMPREPLY=($(compgen -W "$completions" -- "$cur"))
 			;;
 		esac
 	}
-	complete -o bashdefault -o default -F _install_dot_sh_completions install.sh
+	complete -o noquote -o bashdefault -o default -F _install_dot_sh_completions install.sh
 	return
 fi
 
