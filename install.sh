@@ -33,8 +33,8 @@ if [[ "$0" != "$BASH_SOURCE" ]]; then
 	# generic autocomplete function that parses the script help
 	_install_dot_sh_completions() {
 		local completions="$(usage |sed -e '/^  -/!d' \
-			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\5\n\3=\5/' \
-			-e 's/^  \(--[[:alnum:]]\+\)\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\3/')"
+			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]-]\+\)\)\?\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\5\n\3=\5/' \
+			-e 's/^  \(--[[:alnum:]-]\+\)\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\3/')"
 
 		declare -A completion
 		for c in $completions; do
