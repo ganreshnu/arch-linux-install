@@ -1,72 +1,183 @@
 #!/bin/bash
-set -euo pipefail
 
-showhelp() {
+#
+# mkinitcpio.sh
+#
+# Make a unified initial ram disk
+#
+
+#
+# define a usage function
+#
+usage() {
 	cat <<EOD
 Usage: mkinitcpio.sh [OPTIONS] ROOT_PARTITION
 
 Make a kernel initial filesystem. Outputs esp-path/EFI/Linux/archlinux-systemd.efi
 
 Options:
-  --cmdline			Show commandline and exit
-  --microcode		Microcode to run first
-  --module			Additional modules to add
-  --resume			The resume partition
-  --opt				A kernel option (may be passed multiple times)
-  --esp-path		Alternate esp path (default /boot)
-  --reboot			Reboot after install
+  --help                        Show this message and exit.
+  --cmdline                     Show commandline and exit.
+  --microcode FILENAME          Path to the microcode file.
+  --module MODULE               Additional module to add. May be passed
+                                multiple times.
+  --resume GPTIDENTIFIER        The resume GPT partition identifier.
+  --opt OPTION                  Additional kernel option. May be passed
+                                multiple times.
+  --esp-path DIRECTORY          Alternate esp path. (default /boot)
+  --reboot                      Reboot after install.
 
 EOD
 }
 
-main() {
+#
+# script autocomplete
+#
+if [[ "$0" != "$BASH_SOURCE" ]]; then
+	set -uo pipefail
+	# generic autocomplete function that parses the script help
+	_mkinitcpio_dot_sh_completions() {
+		local completions="$(usage |sed -e '/^  -/!d' \
+			-e 's/^  \(-[[:alnum:]]\)\(, \(--[[:alnum:]]\+\)\)\?\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\5\n\3=\5/' \
+			-e 's/^  \(--[[:alnum:]]\+\)\( \[\?\([[:upper:]]\+\)\)\?.*/\1=\3/')"
+
+		declare -A completion
+		for c in $completions; do
+			local key="${c%=*}"
+			[[ "$key" ]] && completion[$key]="${c#*=}"
+		done
+		completions="${!completion[@]}"
+
+		[[ $# -lt 3 ]] && local prev="$1" || prev="$3"
+		[[ $# -lt 2 ]] && local cur="" || cur="$2"
+
+		local type=""
+		[[ ${completion[$prev]+_} ]] && type=${completion[$prev]}
+
+		case "$type" in
+		FILENAME )
+			COMPREPLY=($(compgen -f -- "$cur"))
+			compopt -o filenames
+			;;
+		DIRECTORY )
+			COMPREPLY=($(compgen -d -- "$cur"))
+			compopt -o filenames
+			;;
+		[A-Z]* )
+			;;
+		* )
+			COMPREPLY=($(compgen -W "$completions" -- "$cur"))
+			;;
+		esac
+	}
+	complete -o noquote -o bashdefault -o default \
+		-F _mkinitcpio_dot_sh_completions $(basename "$BASH_SOURCE")
+	return
+fi
+
+#
+# something is running the script
+#
+set -euo pipefail
+
+#
+# define an error function
+#
+error() {
+	>&2 printf "$(tput bold; tput setaf 1)error:$(tput sgr0) %s\n" "$@"
+}
+
+#
+# define the main encapsulation function
+#
+mkinitcpio_dot_sh() { local showusage=-1
+
+	#
+	# declare the variables derived from the arguments
+	#
 	local opts=()
 	local modules=()
 	local esp_path=/boot
 	local showcmdline=""
 	local microcode=""
-	local wanthelp=0
 	local resume=""
 	local reboot=""
-	while :
-	do
-		if [[ "$1" == --* ]]; then
+
+	#
+	# parse the arguments
+	#
+	while true; do
+		if [[ $# -gt 0 && "$1" == -* ]]; then
 			case "$1" in
-				--help )
-					wanthelp=1
-					shift
-					;;
 				--cmdline )
 					showcmdline=yes
 					shift
 					;;
 				--microcode )
-				 	microcode="$2"
-					shift 2
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						microcode="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--module )
-				 	modules+=("$2")
-					shift 2
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						modules+=("$2")
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--resume )
-				 	resume="$2"
-					shift 2
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						resume="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--opt )
-				 	opts+=("$2")
-					shift 2
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						opts+=("$2")
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--esp-path )
-					esp_path="$2"
-					shift 2
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						esp_path="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--reboot )
 					reboot=yes
 					shift
 					;;
+				--help )
+					showusage=0
+					shift
+					;;
+				-- )
+					shift
+					break
+					;;
 				* )
-					>&2 echo "unknown option $1"
-					wanthelp=2
+					error "unknown argument $1"
+					showusage=1
 					shift
 					;;
 			esac
@@ -75,14 +186,30 @@ main() {
 		fi
 	done
 	
-	if [[ ! $1 ]]; then
-	 	>&2 echo "ROOT_PARTITION must be set"
-		wanthelp=2
+	#
+	# argument validation goes here
+	#
+	if [[ $# -lt 1 ]]; then
+	 	error "ROOT_PARTITION must be set"
+		showusage=1
+	fi
+
+	#
+	# show help if necessary
+	#
+	if [[ $showusage -ne -1 ]]; then
+		usage
+		return $showusage
 	fi
 	
-	[[ $wanthelp -eq 1 ]] && showhelp && exit
-	[[ $wanthelp -eq 2 ]] && showhelp && exit 1
-	
+	#
+	# value validation goes here
+	#
+
+	#
+	# script begins
+	#
+
 	# directory containing this script
 	local here=$(dirname $BASH_SOURCE)
 	
@@ -122,6 +249,6 @@ EOD
 	
 	[[ $reboot ]] && reboot now
 }
-main "$@"
+mkinitcpio_dot_sh "$@"
 
-# vim: ts=3 sw=1 sts=0
+# vim: ts=3 sw=3 sts=0

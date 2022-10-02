@@ -65,7 +65,9 @@ if [[ "$0" != "$BASH_SOURCE" ]]; then
 			;;
 		esac
 	}
-	complete -o noquote -o bashdefault -o default -F _install_dot_sh_completions install.sh
+	name=_install_dot_sh_completions
+	complete -o noquote -o bashdefault -o default \
+		-F $name $(basename "$BASH_SOURCE")
 	return
 fi
 
@@ -80,7 +82,6 @@ set -euo pipefail
 #
 error() {
 	>&2 printf "$(tput bold; tput setaf 1)error:$(tput sgr0) %s\n" "$@"
-	showusage=1
 }
 
 #
