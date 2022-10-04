@@ -367,4 +367,4 @@ EOD
 }
 install_dot_sh "$@"
 
-# vim: ts=3 sw=3 sts=0
+# vim: ts=3 sw=0 sts=0
