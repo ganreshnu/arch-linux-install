@@ -203,7 +203,7 @@ install_dot_sh() { local showusage=-1
 	
 	# bootstrap the install with the base packages
 	pacstrap -i $root linux wireless-regdb mkinitcpio $firmware \
-		base dosfstools btrfs-progs \
+		base dosfstools cifs-utils btrfs-progs \
 		iptables-nft firewalld polkit \
 		bash-completion man-db man-pages texinfo \
 		tpm2-tss libfido2 sudo openssh \
