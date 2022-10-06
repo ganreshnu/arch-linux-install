@@ -1,5 +1,0 @@
-#
-# ~/.bash_profile
-#
-
-[[ -f "$XDG_CONFIG_HOME/bash/bashrc" ]] && . "$XDG_CONFIG_HOME/bash/bashrc"

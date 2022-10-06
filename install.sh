@@ -15,7 +15,7 @@ Usage: $(basename "$BASH_SOURCE") [OPTIONS]
 
 Options:
   --help                         Show this message and exit.
-  --hypervisor HYPERVISOR        Force a specific hypervisor.
+  --platform PLATFORM            Configure for a specific platform.
   --root DIRECTORY               The directory in which to install. Defaults
                                  to /mnt.
 
@@ -65,9 +65,8 @@ if [[ "$0" != "$BASH_SOURCE" ]]; then
 			;;
 		esac
 	}
-	name=_install_dot_sh_completions
 	complete -o noquote -o bashdefault -o default \
-		-F $name $(basename "$BASH_SOURCE")
+		-F _install_dot_sh_completions $(basename "$BASH_SOURCE")
 	return
 fi
 
@@ -85,6 +84,69 @@ error() {
 }
 
 #
+# define a function that formats the required block devices
+#
+format_device() {
+	#
+	# format the physical disks if present
+	#
+	local has_swap=0 has_boot=0 has_root=0
+	[[ $(blkid | grep 'PARTLABEL="swap"') ]] && has_swap=1
+	[[ $(blkid | grep 'PARTLABEL="boot"') ]] && has_boot=1
+	[[ $(blkid | grep 'PARTLABEL="archlinux"') ]] && has_root=1
+
+	if [[ $has_root -eq 1 && $has_boot -eq 1 ]]; then
+		if [[ "$hypervisor" ]]; then
+			mkfs.ext4 /dev/sda3
+			mount /dev/sda3 "$root"
+		else
+			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$root"
+		fi
+
+		mkfs.fat -F 32 /dev/sda1
+		mount --mkdir /dev/sda1 $root/boot
+	
+		# setup the bootloader
+		bootctl --esp-path=$root/boot install
+	fi
+	
+	if [[ $has_swap -eq 1 ]]; then
+		mkswap /dev/sda2
+		swapon /dev/sda2
+	fi
+}
+
+#
+# install to a bootable system
+#
+metal_install() {
+	# immediately set the host time
+	timedatectl set-ntp true
+	# format the disks
+	format_device
+	# bootstrap the install
+	pacstrap -i $root $packages
+	# generate the fstab
+	genfstab -U $root >> $root/etc/fstab
+	# setup the hw clock
+	arch-chroot $root hwclock --systohc
+	# set the keymap
+	echo 'KEYMAP=us' > $root/etc/vconsole.conf
+	# use firstboot to get system information
+	mkdir -p $root/etc/systemd/system/systemd-firstboot.service.d
+	cat > $root/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
+	[Service]
+	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
+	
+	[Install]
+	WantedBy=sysinit.target
+EOD
+	rm $root/etc/machine-id
+	arch-chroot $root systemctl enable systemd-firstboot.service
+}
+
+#
 # define the main encapsulation function
 #
 install_dot_sh() { local showusage=-1
@@ -92,9 +154,7 @@ install_dot_sh() { local showusage=-1
 	#
 	# declare the variables derived from the arguments
 	#
-	local hypervisor=$(dmesg |grep "Hypervisor detected")
-	hypervisor="${hypervisor#*: }"
-
+	local platform=""
 	local root="/mnt"
 
 	#
@@ -103,9 +163,9 @@ install_dot_sh() { local showusage=-1
 	while true; do
 		if [[ $# -gt 0 && "$1" == -* ]]; then
 			case "$1" in
-				--hypervisor )
+				--platform )
 					if [[ $# -gt 1 && "$2" != -?* ]]; then
-						hypervisor="$2"
+						platform="$2"
 						shift 2
 					else
 						error "$1 requires an argument"
@@ -162,125 +222,164 @@ install_dot_sh() { local showusage=-1
 	# script begins
 	#
 
-	# immediately set the time
-	timedatectl set-ntp true
-	
+	local here=$(dirname "$BASH_SOURCE")
+	[[ ! "$platform" ]] && platform="$(dmesg | grep '\] DMI: ')"
+
+	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
+	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs"
+	local WORKSTATION_PACKAGES="$CONTAINER_PACKAGES
+		dosfstools cifs-utils-progs
+		firewalld polkit
+		bash-completion man-db man-pages texinfo
+		tpm2-tss libfido2 sudo openssh
+		git arch-install-scripts vim"
+
+	local packages=""
+	case "$platform" in
+		*Hyper-v\ UEFI* )
+			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
+				hyperv e2fsprogs
+			"
+
+			# do the installation
+			metal_install
+
+			# configure platform specific stuff
+			arch-chroot $root /bin/bash <<-EOD
+				systemctl enable hv_fcopy_daemon.service
+				systemctl enable hv_kvp_daemon.service
+				systemctl enable hv_vss_daemon.service
+EOD
+			;;
+		*MacBookAir5,2* )
+			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
+				linux-firmware intel-ucode
+				broadcom-wl iwd
+				f2fs-tools
+			"
+			
+			# do the installation
+			metal_install
+
+			kernel_options="i915.fastboot=1 acpi_backlight=vendor"
+
+			# configure platform specific stuff
+			arch-chroot $root systemctl enable iwd.service
+			;;
+		* )
+			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s - installing as basic container\n" "$platform"
+			packages="$CONTAINER_PACKAGES"
+			pacstrap -cGiM $root $packages
+			;;
+	esac
+
 	#
-	# format the physical disks if present
+	# configure the linux kernel
 	#
-	local has_swap=0 has_boot=0 has_root=0
-	[[ $(blkid | grep 'PARTLABEL="swap"') ]] && has_swap=1
-	[[ $(blkid | grep 'PARTLABEL="boot"') ]] && has_boot=1
-	[[ $(blkid | grep 'PARTLABEL="archlinux"') ]] && has_root=1
+	if [[ "$packages" == "* linux *" ]]; then
 
-	if [[ $has_root -eq 1 && $has_boot -eq 1 ]]; then
-		if [[ "$hypervisor" ]]; then
-			mkfs.ext4 /dev/sda3
-			mount /dev/sda3 "$root"
-		else
-			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$root"
-		fi
+		local microcode="" initrd=""
+		for mc in $root/boot/*-ucode.img; do
+			microcode="$microcode --microcode /boot/$(basename $mc)"
+			initrd="${initrd}initrd /$(basename $mc)
+"
+		done
 
-		mkfs.fat -F 32 /dev/sda1
-		mount --mkdir /dev/sda1 $root/boot
+		cat > $root/boot/loader/entries/fallback.conf <<-EOD
+		title		Arch Linux (fallback)
+		linux		/vmlinuz-linux
+		$initrd
+		initrd	/initramfs-linux.img
+		options	root=PARTLABEL=archlinux resume=PARTLABEL=swap
+		options	rw quiet consoleblank=60 $kernel_options
+EOD
+
 	
-		# setup the bootloader
-		bootctl --esp-path=$root/boot install
+
+		local opts=""
+		for opt in $kernel_options; do
+			opts="$opts --opt $opt"
+		done
+		[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
+		
+		cat > $root/etc/systemd/system/mkunifiedimage.service <<-EOD
+		[Unit]
+		Description=Make unified kernel image
+		After=local-fs.target
+		
+		[Service]
+		Type=oneshot
+		RemainAfterExit=true
+		ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+		StandardOutput=journal
+		StandardError=journal+console
+	EOD
 	fi
-	
-	if [[ $has_swap -eq 1 ]]; then
-		mkswap /dev/sda2
-		swapon /dev/sda2
+
+	#
+	# base configuration
+	#
+	if [[ "$packages" == "* base *" ]]; then
+		arch-chroot $root /bin/bash <<-EOD
+			systemctl enable systemd-networkd.service
+			systemctl enable systemd-resolved.service
+EOD
+		ln -sf /run/systemd/resolve/stub-resolv.conf $root/etc/resolv.conf
+
+		# setup the ethernet network
+		cat > $root/etc/systemd/network/ethernet.network <<-'EOD'
+			[Match]
+			Name=e*
+
+			[Network]
+			DHCP=ipv4
+
+			[DHCPv4]
+			RouteMetric=10
+
+			[IPv6AcceptRA]
+			RouteMetric=10
+EOD
+		# setup the wireless network
+		cat > $root/etc/systemd/network/wireless.network <<-'EOD'
+			[Match]
+			Name=w*
+
+			[Network]
+			DHCP=ipv4
+
+			[DHCPv4]
+			RouteMetric=20
+
+			[IPv6AcceptRA]
+			RouteMetric=20
+EOD
+
+		# uncomment language from $root/etc/locale.gen
+		sed -i \
+			-e "/en_US.UTF-8/s/^#//g" \
+			$root/etc/locale.gen
+		
+		# generate the language files
+		arch-chroot $root locale-gen
+
 	fi
 
-	local firmware
-	if [[ "$hypervisor" ]]; then
-		firmware="e2fsprogs"
-	else
-		firmware="linux-firmware intel-ucode broadcom-wl iwd f2fs-tools"
+	#
+	# firewalld configuration
+	#
+	if [[ "$packages" == "* firewalld *" ]]; then
+		arch-chroot $root /bin/bash <<-EOD
+			systemctl enable firewalld.service
+EOD
 	fi
-	
-	# bootstrap the install with the base packages
-	pacstrap -i $root linux wireless-regdb mkinitcpio $firmware \
-		base dosfstools cifs-utils btrfs-progs \
-		iptables-nft firewalld polkit \
-		bash-completion man-db man-pages texinfo \
-		tpm2-tss libfido2 sudo openssh \
-		git arch-install-scripts vim
-	
-	
-	# generate the fstab -- compress_algorithm=zstd:6,compress_chksum,atgc,gc_merge,lazytime
-	genfstab -U $root >> $root/etc/fstab
-	
-	# enable the required services
-	[[ ! "$hypervisor" ]] && arch-chroot $root systemctl enable iwd.service
-	
-	arch-chroot $root /bin/bash <<-EOD
-	systemctl enable systemd-networkd.service
-	systemctl enable systemd-resolved.service
-	systemctl enable firewalld.service
-EOD
-	# setup the ethernet network
-	cat > $root/etc/systemd/network/ethernet.network <<-'EOD'
-	[Match]
-	Name=e*
-
-	[Network]
-	DHCP=ipv4
-
-	[DHCPv4]
-	RouteMetric=10
-
-	[IPv6AcceptRA]
-	RouteMetric=10
-EOD
-	
-	# setup the wireless network
-	cat > $root/etc/systemd/network/wireless.network <<-'EOD'
-	[Match]
-	Name=w*
-
-	[Network]
-	DHCP=ipv4
-
-	[DHCPv4]
-	RouteMetric=20
-
-	[IPv6AcceptRA]
-	RouteMetric=20
-EOD
-
-	# setup the hw clock
-	arch-chroot $root hwclock --systohc
-	
-	# uncomment language from $root/etc/locale.gen
-	sed -i \
-		-e "/en_US.UTF-8/s/^#//g" \
-		$root/etc/locale.gen
-	
-	# generate the language files
-	arch-chroot $root locale-gen
-	
-	# enable the firstboot service
-	mkdir -p $root/etc/systemd/system/systemd-firstboot.service.d
-	cat > $root/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
-	[Service]
-	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-keymap --prompt-timezone --prompt-hostname
-	ExecStart=ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-	ExecStart=systemctl start mkunifiedimage.service
-	
-	[Install]
-	WantedBy=sysinit.target
-EOD
-	rm $root/etc/machine-id
-	arch-chroot $root systemctl enable systemd-firstboot.service
 	
 	# install the root /etc dropins
 	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
 	local git_etc="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=$root/etc"
 	$git_etc config --local status.showUntrackedFiles no
 	$git_etc checkout
+	echo 'alias gitetc="sudo git -C /etc --git-dir=/root/config-etc.git --work-tree=/etc"' >> $root/etc/skel/.bashrc
 
 	# make the xdg config dir in skel along with the environment.d dir
 	mkdir -p $root/etc/skel/.config/environment.d
@@ -317,33 +416,7 @@ EOD
 	# install this repo
 	git -C $root/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
 	
-	local fallbackopts=""
-	[[ ! "$hypervisor" ]] && fallbackopts="i915.fastboot=1 acpi_backlight=vendor"
-	cat > $root/boot/loader/entries/fallback.conf <<-EOD
-	title		Arch Linux (fallback)
-	linux		/vmlinuz-linux
-	initrd	/initramfs-linux.img
-	options	root=PARTLABEL=archlinux resume=PARTLABEL=swap
-	options	rw quiet consoleblank=60 $fallbackopts
-EOD
-	
-	local microcode=""
-	[[ ! "$hypervisor" ]] && microcode="--microcode /boot/intel-ucode.img"
-	local opts=""
-	[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
-	
-	cat > $root/etc/systemd/system/mkunifiedimage.service <<-EOD
-	[Unit]
-	Description=Make unified kernel image
-	After=local-fs.target
-	
-	[Service]
-	Type=oneshot
-	RemainAfterExit=true
-	ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
-	StandardOutput=inherit
-	StandardError=journal+console
-EOD
+
 	
 	cat <<-EOD
 	
