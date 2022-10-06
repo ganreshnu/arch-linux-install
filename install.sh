@@ -266,6 +266,10 @@ EOD
 			# configure platform specific stuff
 			arch-chroot $root systemctl enable iwd.service
 			;;
+		WSL2 )
+			packages="vim"
+			pacstrap -i $root $packages
+			;;
 		* )
 			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s - installing as basic container\n" "$platform"
 			packages="$CONTAINER_PACKAGES"
@@ -373,6 +377,12 @@ EOD
 			systemctl enable firewalld.service
 EOD
 	fi
+	#
+	# sudo configuration
+	#
+	if [[ "$packages" == "* sudo *" ]]; then
+		awk '/wheel/ && /NOPASSWD/' $root/etc/sudoers | cut -c3- > $root/etc/sudoers.d/wheel
+	fi
 	
 	# install the root /etc dropins
 	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
@@ -403,13 +413,13 @@ EOD
 
 	# install the bash config
 	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-	cat $root/etc/skel/.bashrc  $root/etc/skel/.config/bash/bashrc.sh > $root/etc/skel/.config/bash/bashrc
-	cat $root/etc/skel/.bash_profile $root/etc/skel/.config/bash/bash_profile.sh > $root/etc/skel/.config/bash/bash_profile
-	rm $root/etc/skel/.bash_profile $root/etc/skel/.bashrc $root/etc/skel/.bash_logout
+	echo '. $HOME/.config/bash/bashrc.sh' >> $root/etc/skel/.bashrc
+	echo '. $HOME/.config/bash/bash_profile.sh' >> $root/etc/skel/.bash_profile
+	mv $root/etc/skel/.bash_profile $root/etc/skel/.config/bash/bash_profile
+	rm $root/etc/skel/.bash_logout
 
 	arch-chroot $root /bin/bash <<-EOD
 	cd /etc/skel
-	ln -s .config/bash/bashrc .bashrc
 	ln -s .config/bash/bash_completion .bash_completion
 EOD
 
