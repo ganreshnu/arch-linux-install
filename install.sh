@@ -11,15 +11,18 @@
 #
 usage() {
 	cat <<EOD
-Usage: $(basename "$BASH_SOURCE") [OPTIONS]
+Usage: $(basename "$BASH_SOURCE") [OPTIONS] [MOUNTPOINT]
 
 Options:
   --help                         Show this message and exit.
   --platform PLATFORM            Configure for a specific platform.
-  --root DIRECTORY               The directory in which to install. Defaults
-                                 to /mnt.
+  --boot DEVICE                  The device to configure as an EFI boot
+                                 partition.
+  --root DEVICE                  The device to configure as the filewywtem
+                                 root.
+  --swap DEVICE                  The device to configure as swap/resume.
 
-Install an Arch Linux Distribution.
+Install an Arch Linux Distribution. MOUNTPOINT defaults to /mnt.
 EOD
 }
 
@@ -84,66 +87,9 @@ error() {
 }
 
 #
-# define a function that formats the required block devices
-#
-format_device() {
-	#
-	# format the physical disks if present
-	#
-	local has_swap=0 has_boot=0 has_root=0
-	[[ $(blkid | grep 'PARTLABEL="swap"') ]] && has_swap=1
-	[[ $(blkid | grep 'PARTLABEL="boot"') ]] && has_boot=1
-	[[ $(blkid | grep 'PARTLABEL="archlinux"') ]] && has_root=1
-
-	if [[ $has_root -eq 1 && $has_boot -eq 1 ]]; then
-		if [[ "$hypervisor" ]]; then
-			mkfs.ext4 /dev/sda3
-			mount /dev/sda3 "$root"
-		else
-			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$root"
-		fi
-
-		mkfs.fat -F 32 /dev/sda1
-		mount --mkdir /dev/sda1 $root/boot
-	
-		# setup the bootloader
-		bootctl --esp-path=$root/boot install
-	fi
-	
-	if [[ $has_swap -eq 1 ]]; then
-		mkswap /dev/sda2
-		swapon /dev/sda2
-	fi
-}
-
-#
 # install to a bootable system
 #
 metal_install() {
-	# immediately set the host time
-	timedatectl set-ntp true
-	# format the disks
-	format_device
-	# bootstrap the install
-	pacstrap -i $root $packages
-	# generate the fstab
-	genfstab -U $root >> $root/etc/fstab
-	# setup the hw clock
-	arch-chroot $root hwclock --systohc
-	# set the keymap
-	echo 'KEYMAP=us' > $root/etc/vconsole.conf
-	# use firstboot to get system information
-	mkdir -p $root/etc/systemd/system/systemd-firstboot.service.d
-	cat > $root/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
-	[Service]
-	ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
-	
-	[Install]
-	WantedBy=sysinit.target
-EOD
-	rm $root/etc/machine-id
-	arch-chroot $root systemctl enable systemd-firstboot.service
 }
 
 #
@@ -154,8 +100,7 @@ install_dot_sh() { local showusage=-1
 	#
 	# declare the variables derived from the arguments
 	#
-	local platform=""
-	local root="/mnt"
+	local platform="" boot="" root="" swap="" mount="/mnt"
 
 	#
 	# parse the arguments
@@ -173,9 +118,29 @@ install_dot_sh() { local showusage=-1
 						shift
 					fi
 					;;
+				--boot )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						boot="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
 				--root )
 					if [[ $# -gt 1 && "$2" != -?* ]]; then
 						root="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
+				--swap )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						swap="$2"
 						shift 2
 					else
 						error "$1 requires an argument"
@@ -202,6 +167,8 @@ install_dot_sh() { local showusage=-1
 		fi
 	done
 	
+	[[ $# -gt 0 ]] && mount="$@"
+
 	#
 	# argument validation goes here
 	#
@@ -218,12 +185,42 @@ install_dot_sh() { local showusage=-1
 	# value validation goes here
 	#
 
+	local uuid_boot="" uuid_root="" uuid_swap=""
+	partuuid() {
+		(blkid | grep "^$1" | sed 's/.*PARTUUID="\([[:alnum:]-]\+\)".*/\1/g') || \
+			(error "could not find a uuid for device $1"; return 1)
+	}
+	if [[ "$boot" ]]; then
+		# find the uuid
+		uuid_boot=$(partuuid "$boot")
+	fi
+	if [[ "$root" ]]; then
+		# find the uuid and device name
+		uuid_root=$(partuuid "$root")
+	fi
+	if [[ "$swap" ]]; then
+		# find the uuid and device name
+		uuid_swap=$(partuuid "$swap")
+	fi
+
 	#
 	# script begins
 	#
 
+	# immediately set the host time
+	timedatectl set-ntp true || true
+
 	local here=$(dirname "$BASH_SOURCE")
-	[[ ! "$platform" ]] && platform="$(dmesg | grep '\] DMI: ')"
+	[[ ! "$platform" ]] && (platform="$(dmesg | grep '\] DMI: ')" || true)
+
+	if [[ "$swap" ]]; then
+		mkswap "$swap"
+		swapon "$swap"
+	fi
+
+	if [[ "$boot" ]]; then
+		mkfs.fat -F 32 "$boot"
+	fi
 
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
 	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs"
@@ -241,15 +238,30 @@ install_dot_sh() { local showusage=-1
 				hyperv e2fsprogs
 			"
 
-			# do the installation
-			metal_install
+			if [[ ! "$root" || ! "$boot" ]]; then
+				error "need root device and boot device for hyper-v"
+				return 1
+			fi
 
-			# configure platform specific stuff
-			arch-chroot $root /bin/bash <<-EOD
-				systemctl enable hv_fcopy_daemon.service
-				systemctl enable hv_kvp_daemon.service
-				systemctl enable hv_vss_daemon.service
-EOD
+			mkfs.ext4 "$root"
+			mount "$root" "$mount"
+			mount --mkdir "$boot" "$mount/boot"
+
+			# setup the bootloader
+			bootctl --esp-path="$mount/boot" install
+
+			# bootstrap the install
+			pacstrap -i $mount $packages
+
+			# generate the fstab
+			genfstab -U $mount >> $mount/etc/fstab
+
+			# setup the hw clock
+			arch-chroot $mount hwclock --systohc --update-drift
+			# set the keymap
+			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
+
+			kernel_options=""
 			;;
 		*MacBookAir5,2* )
 			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
@@ -257,39 +269,62 @@ EOD
 				broadcom-wl iwd
 				f2fs-tools
 			"
-			
-			# do the installation
-			metal_install
+
+			if [[ ! "$root" || ! "$boot" ]]; then
+				error "need root device and boot device for macbook"
+				return 1
+			fi
+	
+			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
+			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$mount"
+			mount --mkdir "$boot" "$mount/boot"
+	
+			# setup the bootloader
+			bootctl --esp-path="$mount/boot" install
+
+			# bootstrap the install
+			pacstrap -i $mount $packages
+
+			# generate the fstab
+			genfstab -U $mount >> $mount/etc/fstab
+
+			# setup the hw clock
+			arch-chroot $mount hwclock --systohc --update-drift
+			# set the keymap
+			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
 
 			kernel_options="i915.fastboot=1 acpi_backlight=vendor"
-
-			# configure platform specific stuff
-			arch-chroot $root systemctl enable iwd.service
 			;;
 		WSL2 )
-			packages="vim"
-			pacstrap -i $root $packages
+			packages="$CONTAINER_PACKAGES git vim sudo openssh"
+			pacstrap -i $mount $packages
 			;;
 		* )
 			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s - installing as basic container\n" "$platform"
 			packages="$CONTAINER_PACKAGES"
-			pacstrap -cGiM $root $packages
+			pacstrap -cGiM $mount $packages
 			;;
 	esac
+
+	exit
+	packages="$(arch-chroot $mount pacman -Qq)"
+	haspackage() {
+		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
+	}
 
 	#
 	# configure the linux kernel
 	#
-	if [[ "$packages" == "* linux *" ]]; then
+	if haspackage "linux"; then
 
 		local microcode="" initrd=""
-		for mc in $root/boot/*-ucode.img; do
+		for mc in $mount/boot/*-ucode.img; do
 			microcode="$microcode --microcode /boot/$(basename $mc)"
 			initrd="${initrd}initrd /$(basename $mc)
 "
 		done
 
-		cat > $root/boot/loader/entries/fallback.conf <<-EOD
+		cat > $mount/boot/loader/entries/fallback.conf <<-EOD
 		title		Arch Linux (fallback)
 		linux		/vmlinuz-linux
 		$initrd
@@ -298,133 +333,215 @@ EOD
 		options	rw quiet consoleblank=60 $kernel_options
 EOD
 
-	
-
 		local opts=""
 		for opt in $kernel_options; do
 			opts="$opts --opt $opt"
 		done
-		[[ ! "$hypervisor" ]] && opts="--opt i915.fastboot=1 --opt acpi_backlight=vendor"
 		
-		cat > $root/etc/systemd/system/mkunifiedimage.service <<-EOD
+		cat > $mount/etc/systemd/system/make-unified-init.service <<-EOD
 		[Unit]
 		Description=Make unified kernel image
 		After=local-fs.target
 		
 		[Service]
 		Type=oneshot
-		RemainAfterExit=true
 		ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
 		StandardOutput=journal
 		StandardError=journal+console
-	EOD
+EOD
 	fi
 
 	#
-	# base configuration
+	# systemd configuration
 	#
-	if [[ "$packages" == "* base *" ]]; then
-		arch-chroot $root /bin/bash <<-EOD
-			systemctl enable systemd-networkd.service
-			systemctl enable systemd-resolved.service
-EOD
-		ln -sf /run/systemd/resolve/stub-resolv.conf $root/etc/resolv.conf
+	if haspackage "systemd"; then
 
 		# setup the ethernet network
-		cat > $root/etc/systemd/network/ethernet.network <<-'EOD'
-			[Match]
-			Name=e*
+		cat > $mount/etc/systemd/network/ethernet.network <<-'EOD'
+		[Match]
+		Name=e*
 
-			[Network]
-			DHCP=ipv4
+		[Network]
+		DHCP=ipv4
 
-			[DHCPv4]
-			RouteMetric=10
+		[DHCPv4]
+		RouteMetric=10
 
-			[IPv6AcceptRA]
-			RouteMetric=10
+		[IPv6AcceptRA]
+		RouteMetric=10
 EOD
 		# setup the wireless network
-		cat > $root/etc/systemd/network/wireless.network <<-'EOD'
-			[Match]
-			Name=w*
+		cat > $mount/etc/systemd/network/wireless.network <<-'EOD'
+		[Match]
+		Name=w*
 
-			[Network]
-			DHCP=ipv4
+		[Network]
+		DHCP=ipv4
 
-			[DHCPv4]
-			RouteMetric=20
+		[DHCPv4]
+		RouteMetric=20
 
-			[IPv6AcceptRA]
-			RouteMetric=20
+		[IPv6AcceptRA]
+		RouteMetric=20
 EOD
+		# use firstboot to get system information
+		mkdir -p $mount/etc/systemd/system/systemd-firstboot.service.d
+		cat > $mount/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
+		[Service]
+		ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
+		
+		[Install]
+		WantedBy=sysinit.target
+EOD
+		rm -f $mount/etc/machine-id
 
-		# uncomment language from $root/etc/locale.gen
+		# enable the services
+		arch-chroot $mount /bin/bash <<-EOD
+		systemctl enable systemd-networkd.service
+		systemctl enable systemd-resolved.service
+		systemctl enable systemd-firstboot.service
+EOD
+		ln -sf /run/systemd/resolve/stub-resolv.conf $mount/etc/resolv.conf
+
+		# setup the user environment.d
+		mkdir -p $mount/etc/skel/.config/environment.d
+		echo 'export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)' > "$mount/etc/profile.d/user-environment-d.sh"
+	fi
+
+	#
+	# configure hyperv
+	#
+	if haspackage "hyperv"; then
+		arch-chroot $mount /bin/bash <<-EOD
+		systemctl enable hv_fcopy_daemon.service
+		systemctl enable hv_kvp_daemon.service
+		systemctl enable hv_vss_daemon.service
+EOD
+	fi
+
+	#
+	# configure iwd
+	#
+	if haspackage "iwd"; then
+		arch-chroot $mount systemctl enable iwd.service
+	fi
+
+	#
+	# glibc configuration
+	#
+	if haspackage "glibc"; then
+		# uncomment language from $mount/etc/locale.gen
 		sed -i \
 			-e "/en_US.UTF-8/s/^#//g" \
-			$root/etc/locale.gen
+			$mount/etc/locale.gen
 		
 		# generate the language files
-		arch-chroot $root locale-gen
+		arch-chroot $mount locale-gen
+	fi
 
+	#
+	# polkit configuration
+	#
+	if haspackage "polkit"; then
+		cat > $mount/etc/polkit-1/rules.d/50-nopasswd_global.rules <<-'EOD'
+		/*
+		 * Allow members of the wheel group to execute any actions
+		 * without password authentication.
+		 */
+		polkit.addRule(function(action, subject) {
+			if (subject.isInGroup("wheel")) {
+				return polkit.Result.YES;
+			}
+			return polkit.Result.NOT_HANDLED
+		});
+EOD
 	fi
 
 	#
 	# firewalld configuration
 	#
-	if [[ "$packages" == "* firewalld *" ]]; then
-		arch-chroot $root /bin/bash <<-EOD
-			systemctl enable firewalld.service
-EOD
+	if haspackage "firewalld"; then
+		arch-chroot $mount /bin/bash systemctl enable firewalld.service
 	fi
+
 	#
 	# sudo configuration
 	#
-	if [[ "$packages" == "* sudo *" ]]; then
-		awk '/wheel/ && /NOPASSWD/' $root/etc/sudoers | cut -c3- > $root/etc/sudoers.d/wheel
+	if haspackage "sudo"; then
+		awk '/wheel/ && /NOPASSWD/' $mount/etc/sudoers | cut -c3- > $mount/etc/sudoers.d/wheel
+		chmod 0750 $mount/etc/sudoers.d
 	fi
 	
-	# install the root /etc dropins
-	git -C $root/root clone --bare https://github.com/ganreshnu/config-etc.git
-	local git_etc="git -C $root/etc --git-dir=$root/root/config-etc.git --work-tree=$root/etc"
-	$git_etc config --local status.showUntrackedFiles no
-	$git_etc checkout
-	echo 'alias gitetc="sudo git -C /etc --git-dir=/root/config-etc.git --work-tree=/etc"' >> $root/etc/skel/.bashrc
+#	# install the root /etc dropins
+#	git -C $mount/root clone --bare https://github.com/ganreshnu/config-etc.git
+#	local gitetc="git -C $mount/etc --git-dir=$mount/root/config-etc.git --work-tree=$mount/etc"
+#	$gitetc config --local status.showUntrackedFiles no
+#	$gitetc checkout
+#	echo 'alias gitetc="sudo git -C /etc --git-dir=/root/config-etc.git --work-tree=/etc"' >> $mount/etc/skel/.bashrc
 
-	# make the xdg config dir in skel along with the environment.d dir
-	mkdir -p $root/etc/skel/.config/environment.d
-	# install the readline config
-	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
-	echo 'INPUTRC=$HOME/.config/readline/inputrc' > $root/etc/skel/.config/environment.d/50-readline.conf
+	#
+	# readline configuration
+	#
+	if haspackage "readline"; then
+		# install the readline config
+		[[ ! -d "$mount/etc/skel/.config/readline" ]] && \
+			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
+		echo 'INPUTRC=$HOME/.config/readline/inputrc' > $mount/etc/skel/.config/environment.d/50-readline.conf
+	fi
 
-	# install the gnupg config
-	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
-	chmod go-rwx $root/etc/skel/.config/gnupg
-	echo 'GNUPGHOME=$HOME/.config/gnupg' > $root/etc/skel/.config/environment.d/20-gnupg.conf
-	echo '. $GNUPGHOME/.rc' >> $root/etc/skel/.bashrc
+	#
+	# gnupg configuration
+	#
+	if haspackage "gnupg"; then
+		if [[ ! -d "$mount/etc/skel/.config/gnupg" ]]; then
+			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
+			echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
+		fi
+		chmod go-rwx $mount/etc/skel/.config/gnupg
+		echo 'GNUPGHOME=$HOME/.config/gnupg' > $mount/etc/skel/.config/environment.d/20-gnupg.conf
+	fi
 
-	# install the ssh config
-	git -C $root/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
-	ssh-keyscan github.com > $root/etc/skel/.ssh/known_hosts
+	#
+	# openssh configuration
+	#
+	if haspackage "openssh"; then
+		[[ ! -d "$mount/etc/skel/.ssh" ]] && \
+			git -C $mount/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
+		ssh-keyscan github.com > $mount/etc/skel/.ssh/known_hosts
+	fi
 
-	# install the vim config
-	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
-	printf "export VIMINIT='%s | %s'\n" 'let $MYVIMRC = "$HOME/.config/vim/vimrc"' 'source $MYVIMRC' >> $root/etc/skel/.bashrc
+	#
+	# vim configuration
+	#
+	if haspackage "vim"; then
+		if [[ ! -d "$mount/etc/skel/.config/vim" ]]; then
+			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
+			printf "export VIMINIT='%s | %s'\n" 'let $MYVIMRC = "$HOME/.config/vim/vimrc"' 'source $MYVIMRC' >> $mount/etc/skel/.bashrc
+		fi
+	fi
 
-	# install the bash config
-	git -C $root/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-	echo '. $HOME/.config/bash/bashrc.sh' >> $root/etc/skel/.bashrc
-	echo '. $HOME/.config/bash/bash_profile.sh' >> $root/etc/skel/.bash_profile
-	mv $root/etc/skel/.bash_profile $root/etc/skel/.config/bash/bash_profile
-	rm $root/etc/skel/.bash_logout
+	#
+	# bash configuration
+	#
+	if haspackage "bash"; then
 
-	arch-chroot $root /bin/bash <<-EOD
-	cd /etc/skel
-	ln -s .config/bash/bash_completion .bash_completion
+		if [[ ! -d "$mount/etc/skel/.config/bash" ]]; then
+			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
+			echo '. $HOME/.config/bash/bashrc.sh' >> $mount/etc/skel/.bashrc
+			echo '. $HOME/.config/bash/bash_profile.sh' >> $mount/etc/skel/.bash_profile
+			echo '. $HOME/.config/bash/bash_logout.sh' >> $mount/etc/skel/.bash_logout
+			mv $mount/etc/skel/.bash_profile $mount/etc/skel/.config/bash/bash_profile
+
+			arch-chroot $mount /bin/bash <<-EOD
+			cd /etc/skel
+			ln -s .config/bash/bash_completion .bash_completion
 EOD
+		fi
+		echo '. $HOME/.config/bash/bash_profile' > $mount/etc/profile.d/bash-xdg-profile.sh
+	fi
 
-	# install this repo
-	git -C $root/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
+#	# install this repo
+#	git -C $mount/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
 	
 
 	
@@ -432,7 +549,7 @@ EOD
 	
 	------------------------------
 	please add a user by running:
-	arch-chroot $root
+	arch-chroot $mount
 	useradd -m -G wheel,uucp <USER>
 	passwd <USER>
 	exit
@@ -443,7 +560,7 @@ EOD
 	
 	-------------------------
 	to finish the install run:
-	umount -R $root
+	umount -R $mount
 	reboot
 	
 EOD
