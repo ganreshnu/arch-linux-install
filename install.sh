@@ -219,7 +219,7 @@ install_dot_sh() { local showusage=-1
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
 	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs"
 	local WORKSTATION_PACKAGES="$CONTAINER_PACKAGES
-		dosfstools cifs-utils exfat-utils udftools
+		dosfstools cifs-utils exfatprogs udftools nilfs-utils
 		firewalld polkit
 		bash-completion man-db man-pages texinfo
 		tpm2-tss libfido2 sudo openssh

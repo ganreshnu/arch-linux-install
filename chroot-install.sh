@@ -5,7 +5,8 @@ pacman -S brightnessctl
 pacman -S pipewire-alsa pipewire-jack pipewire-pulse pipewire-docs wireplumber-docs
 pacman -S wayland libva libva-intel-driver libva-utils vulkan-intel vulkan-mesa-layers
 
-pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
+pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra ttf-iosevka-nerd
+pacman -S starship
 
 pacman -S sway swaybg swayidle swaylock bemenu-wayland foot
 pacman -S gcr #for pinentry-gnome3
