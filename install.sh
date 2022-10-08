@@ -546,6 +546,15 @@ EOD
 	#
 	if haspackage "bash"; then
 
+		cat > $mount/etc/profile.d/bash-xdg-profile.sh <<-'EOD'
+		_confdir="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
+		if [[ -d "$confdir" && "$0" == "bash" ]]; then
+			. "$HOME/.config/bash/bash_profile"
+			HISTFILE="$HOME/.local/share/bash/history"
+		fi
+		unset _confdir
+EOD
+
 		if [[ ! -d "$mount/etc/skel/.config/bash" ]]; then
 			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
 			echo '. $HOME/.config/bash/bashrc.sh' >> $mount/etc/skel/.bashrc
