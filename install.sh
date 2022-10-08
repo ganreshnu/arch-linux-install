@@ -87,12 +87,6 @@ error() {
 }
 
 #
-# install to a bootable system
-#
-metal_install() {
-}
-
-#
 # define the main encapsulation function
 #
 install_dot_sh() { local showusage=-1
@@ -225,7 +219,7 @@ install_dot_sh() { local showusage=-1
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
 	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs"
 	local WORKSTATION_PACKAGES="$CONTAINER_PACKAGES
-		dosfstools cifs-utils-progs
+		dosfstools cifs-utils exfat-utils udftools
 		firewalld polkit
 		bash-completion man-db man-pages texinfo
 		tpm2-tss libfido2 sudo openssh
@@ -299,6 +293,37 @@ install_dot_sh() { local showusage=-1
 			packages="$CONTAINER_PACKAGES git vim sudo openssh"
 			pacstrap -i $mount $packages
 			;;
+		LIVESTICK )
+			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
+				linux-firmware intel-ucode amd-ucode
+				broadcom-wl iwd
+				f2fs-tools e2fsprogs
+			"
+
+			if [[ ! "$root" || ! "$boot" ]]; then
+				error "need root device and boot device for livestick"
+				return 1
+			fi
+
+			mkfs.ext4 "$root"
+			mount "$root" "$mount"
+			mount --mkdir "$boot" "$mount/boot"
+
+			# setup the bootloader
+			bootctl --esp-path="$mount/boot" install
+
+			pacstrap -cGiM $mount $packages
+
+			# generate the fstab
+			genfstab -U $mount >> $mount/etc/fstab
+
+			# setup the hw clock
+			arch-chroot $mount hwclock --systohc --update-drift
+			# set the keymap
+			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
+
+			kernel_options=""
+			;;
 		* )
 			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s - installing as basic container\n" "$platform"
 			packages="$CONTAINER_PACKAGES"
@@ -306,7 +331,6 @@ install_dot_sh() { local showusage=-1
 			;;
 	esac
 
-	exit
 	packages="$(arch-chroot $mount pacman -Qq)"
 	haspackage() {
 		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
@@ -324,12 +348,14 @@ install_dot_sh() { local showusage=-1
 "
 		done
 
+		local resume=""
+		[[ "$swap" ]] && resume="resume=PARTUUID=$uuid_swap"
 		cat > $mount/boot/loader/entries/fallback.conf <<-EOD
 		title		Arch Linux (fallback)
 		linux		/vmlinuz-linux
 		$initrd
 		initrd	/initramfs-linux.img
-		options	root=PARTLABEL=archlinux resume=PARTLABEL=swap
+		options	root=PARTUUID=$uuid_root $resume
 		options	rw quiet consoleblank=60 $kernel_options
 EOD
 
@@ -338,6 +364,8 @@ EOD
 			opts="$opts --opt $opt"
 		done
 		
+		resume=""
+		[[ "$swap" ]] && resume="--resume PARTUUID=$uuid_swap"
 		cat > $mount/etc/systemd/system/make-unified-init.service <<-EOD
 		[Unit]
 		Description=Make unified kernel image
@@ -345,7 +373,7 @@ EOD
 		
 		[Service]
 		Type=oneshot
-		ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh --resume PARTLABEL=swap $microcode $opts PARTLABEL=archlinux
+		ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh $resume $microcode $opts PARTUUID=$uuid_root
 		StandardOutput=journal
 		StandardError=journal+console
 EOD
@@ -461,7 +489,7 @@ EOD
 	# firewalld configuration
 	#
 	if haspackage "firewalld"; then
-		arch-chroot $mount /bin/bash systemctl enable firewalld.service
+		arch-chroot $mount systemctl enable firewalld.service
 	fi
 
 	#
@@ -471,13 +499,6 @@ EOD
 		awk '/wheel/ && /NOPASSWD/' $mount/etc/sudoers | cut -c3- > $mount/etc/sudoers.d/wheel
 		chmod 0750 $mount/etc/sudoers.d
 	fi
-	
-#	# install the root /etc dropins
-#	git -C $mount/root clone --bare https://github.com/ganreshnu/config-etc.git
-#	local gitetc="git -C $mount/etc --git-dir=$mount/root/config-etc.git --work-tree=$mount/etc"
-#	$gitetc config --local status.showUntrackedFiles no
-#	$gitetc checkout
-#	echo 'alias gitetc="sudo git -C /etc --git-dir=/root/config-etc.git --work-tree=/etc"' >> $mount/etc/skel/.bashrc
 
 	#
 	# readline configuration
@@ -539,11 +560,6 @@ EOD
 		fi
 		echo '. $HOME/.config/bash/bash_profile' > $mount/etc/profile.d/bash-xdg-profile.sh
 	fi
-
-#	# install this repo
-#	git -C $mount/root clone --quiet https://github.com/ganreshnu/arch-linux-install.git
-	
-
 	
 	cat <<-EOD
 	
