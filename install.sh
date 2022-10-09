@@ -291,6 +291,13 @@ install_dot_sh() { local showusage=-1
 			;;
 		WSL2 )
 			packages="$CONTAINER_PACKAGES git vim sudo openssh"
+
+			if [[ ! "$root" ]]; then
+				error "need root device for WSL2"
+				return 1
+			fi
+			mkfs.ext4 "$root"
+			mount "$root" "$mount"
 			pacstrap -i $mount $packages
 			;;
 		LIVESTICK )
@@ -432,7 +439,6 @@ EOD
 		ln -sf /run/systemd/resolve/stub-resolv.conf $mount/etc/resolv.conf
 
 		# setup the user environment.d
-		mkdir -p $mount/etc/skel/.config/environment.d
 		echo 'export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)' > "$mount/etc/profile.d/user-environment-d.sh"
 	fi
 
@@ -500,6 +506,11 @@ EOD
 		chmod 0750 $mount/etc/sudoers.d
 	fi
 
+
+
+
+
+
 	#
 	# readline configuration
 	#
@@ -507,7 +518,7 @@ EOD
 		# install the readline config
 		[[ ! -d "$mount/etc/skel/.config/readline" ]] && \
 			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
-		echo 'INPUTRC=$HOME/.config/readline/inputrc' > $mount/etc/skel/.config/environment.d/50-readline.conf
+		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/readline/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
@@ -519,7 +530,9 @@ EOD
 			echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
 		fi
 		chmod go-rwx $mount/etc/skel/.config/gnupg
-		echo 'GNUPGHOME=$HOME/.config/gnupg' > $mount/etc/skel/.config/environment.d/20-gnupg.conf
+
+		mkdir -p $mount/etc/skel/.config/environment.d
+		echo 'GNUPGHOME=${XDG_CONFIG_HOME:-$HOME/.config}/gnupg' > $mount/etc/skel/.config/environment.d/20-gnupg.conf
 	fi
 
 	#
@@ -537,7 +550,7 @@ EOD
 	if haspackage "vim"; then
 		if [[ ! -d "$mount/etc/skel/.config/vim" ]]; then
 			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
-			printf "export VIMINIT='%s | %s'\n" 'let $MYVIMRC = "$HOME/.config/vim/vimrc"' 'source $MYVIMRC' >> $mount/etc/skel/.bashrc
+			echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
 		fi
 	fi
 
@@ -546,28 +559,30 @@ EOD
 	#
 	if haspackage "bash"; then
 
-		cat > $mount/etc/profile.d/bash-xdg-profile.sh <<-'EOD'
-		_confdir="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
-		if [[ -d "$confdir" && "$0" == "bash" ]]; then
-			. "$HOME/.config/bash/bash_profile"
-			HISTFILE="$HOME/.local/share/bash/history"
-		fi
-		unset _confdir
-EOD
-
-		if [[ ! -d "$mount/etc/skel/.config/bash" ]]; then
-			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-			echo '. $HOME/.config/bash/bashrc.sh' >> $mount/etc/skel/.bashrc
-			echo '. $HOME/.config/bash/bash_profile.sh' >> $mount/etc/skel/.bash_profile
-			echo '. $HOME/.config/bash/bash_logout.sh' >> $mount/etc/skel/.bash_logout
-			mv $mount/etc/skel/.bash_profile $mount/etc/skel/.config/bash/bash_profile
-
-			arch-chroot $mount /bin/bash <<-EOD
-			cd /etc/skel
-			ln -s .config/bash/bash_completion .bash_completion
-EOD
-		fi
-		echo '. $HOME/.config/bash/bash_profile' > $mount/etc/profile.d/bash-xdg-profile.sh
+#		cat > $mount/etc/profile.d/bash-xdg-profile.sh <<-'EOD'
+#		_confdir="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
+#		if [[ -d "$confdir" && "$0" == "bash" ]]; then
+#			. "$HOME/.config/bash/bash_profile"
+#			HISTFILE="$HOME/.local/share/bash/history"
+#		fi
+#		unset _confdir
+#EOD
+		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.profile' >> $mount/etc/skel/.bash_profile
+		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/.rc' >> $mount/etc/skel/.bashrc
+#
+#		if [[ ! -d "$mount/etc/skel/.config/bash" ]]; then
+#			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
+#			echo '. $HOME/.config/bash/bashrc.sh' >> $mount/etc/skel/.bashrc
+#			echo '. $HOME/.config/bash/bash_profile.sh' >> $mount/etc/skel/.bash_profile
+#			echo '. $HOME/.config/bash/bash_logout.sh' >> $mount/etc/skel/.bash_logout
+#			mv $mount/etc/skel/.bash_profile $mount/etc/skel/.config/bash/bash_profile
+#
+#			arch-chroot $mount /bin/bash <<-EOD
+#			cd /etc/skel
+#			ln -s .config/bash/bash_completion .bash_completion
+#EOD
+#		fi
+#		echo '. $HOME/.config/bash/bash_profile' > $mount/etc/profile.d/bash-xdg-profile.sh
 	fi
 	
 	cat <<-EOD
