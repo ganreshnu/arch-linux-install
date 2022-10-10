@@ -217,7 +217,7 @@ install_dot_sh() { local showusage=-1
 	fi
 
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
-	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs"
+	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs reflector rsync"
 	local WORKSTATION_PACKAGES="$CONTAINER_PACKAGES
 		dosfstools cifs-utils exfatprogs udftools nilfs-utils
 		firewalld polkit
@@ -298,7 +298,7 @@ install_dot_sh() { local showusage=-1
 			fi
 			mkfs.ext4 "$root"
 			mount "$root" "$mount"
-			pacstrap -i $mount $packages
+			pacstrap -cGiM $mount $packages
 			;;
 		LIVESTICK )
 			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
@@ -516,8 +516,8 @@ EOD
 	#
 	if haspackage "readline"; then
 		# install the readline config
-		[[ ! -d "$mount/etc/skel/.config/readline" ]] && \
-			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
+		mkdir -p "$mount/etc/skel/.config"
+		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
 		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/readline/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
@@ -525,10 +525,9 @@ EOD
 	# gnupg configuration
 	#
 	if haspackage "gnupg"; then
-		if [[ ! -d "$mount/etc/skel/.config/gnupg" ]]; then
-			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
-			echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
-		fi
+		mkdir -p "$mount/etc/skel/.config"
+		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
+		echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
 		chmod go-rwx $mount/etc/skel/.config/gnupg
 
 		mkdir -p $mount/etc/skel/.config/environment.d
@@ -539,8 +538,7 @@ EOD
 	# openssh configuration
 	#
 	if haspackage "openssh"; then
-		[[ ! -d "$mount/etc/skel/.ssh" ]] && \
-			git -C $mount/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
+		git -C $mount/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 		ssh-keyscan github.com > $mount/etc/skel/.ssh/known_hosts
 	fi
 
@@ -548,41 +546,24 @@ EOD
 	# vim configuration
 	#
 	if haspackage "vim"; then
-		if [[ ! -d "$mount/etc/skel/.config/vim" ]]; then
-			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
-			echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
-		fi
+		mkdir -p "$mount/etc/skel/.config"
+		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
+		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
 	# bash configuration
 	#
 	if haspackage "bash"; then
-
-#		cat > $mount/etc/profile.d/bash-xdg-profile.sh <<-'EOD'
-#		_confdir="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
-#		if [[ -d "$confdir" && "$0" == "bash" ]]; then
-#			. "$HOME/.config/bash/bash_profile"
-#			HISTFILE="$HOME/.local/share/bash/history"
-#		fi
-#		unset _confdir
-#EOD
+		mkdir -p "$mount/etc/skel/.config"
+		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
 		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.profile' >> $mount/etc/skel/.bash_profile
-		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/.rc' >> $mount/etc/skel/.bashrc
-#
-#		if [[ ! -d "$mount/etc/skel/.config/bash" ]]; then
-#			git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-#			echo '. $HOME/.config/bash/bashrc.sh' >> $mount/etc/skel/.bashrc
-#			echo '. $HOME/.config/bash/bash_profile.sh' >> $mount/etc/skel/.bash_profile
-#			echo '. $HOME/.config/bash/bash_logout.sh' >> $mount/etc/skel/.bash_logout
-#			mv $mount/etc/skel/.bash_profile $mount/etc/skel/.config/bash/bash_profile
-#
-#			arch-chroot $mount /bin/bash <<-EOD
-#			cd /etc/skel
-#			ln -s .config/bash/bash_completion .bash_completion
-#EOD
-#		fi
-#		echo '. $HOME/.config/bash/bash_profile' > $mount/etc/profile.d/bash-xdg-profile.sh
+		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.rc' >> $mount/etc/skel/.bashrc
+
+		haspackage "bash-completion" && arch-chroot $mount /bin/bash <<-EOD
+		cd /etc/skel
+		ln -s .config/bash/bash_completion .bash_completion
+EOD
 	fi
 	
 	cat <<-EOD
