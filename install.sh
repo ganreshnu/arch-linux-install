@@ -290,7 +290,8 @@ install_dot_sh() { local showusage=-1
 			kernel_options="i915.fastboot=1 acpi_backlight=vendor"
 			;;
 		WSL2 )
-			packages="$CONTAINER_PACKAGES git vim sudo openssh"
+			packages="$CONTAINER_PACKAGES git vim sudo openssh
+				bash-completion man-db man-pages texinfo"
 
 			if [[ ! "$root" ]]; then
 				error "need root device for WSL2"
@@ -439,7 +440,7 @@ EOD
 		ln -sf /run/systemd/resolve/stub-resolv.conf $mount/etc/resolv.conf
 
 		# setup the user environment.d
-		echo 'export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)' > "$mount/etc/profile.d/user-environment-d.sh"
+		echo 'eval "export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)"' > "$mount/etc/profile.d/user-environment-d.sh"
 	fi
 
 	#
@@ -507,31 +508,33 @@ EOD
 	fi
 
 
-
-
-
+	#
+	# filesystem configuration
+	#
+	if haspackage "filesystem"; then
+		mkdir -p "$mount/etc/skel/.config/environment.d"
+		mkdir -p "$mount/etc/skel/.local/"{"state","share","bin"}
+		haspackage "systemd" && \
+			echo 'PATH="$HOME/.local/bin:$PATH' > "$mount/etc/skel/.config/environment.d/50-local-bin.conf"
+	fi
 
 	#
 	# readline configuration
 	#
 	if haspackage "readline"; then
 		# install the readline config
-		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
-#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/readline/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
 	# gnupg configuration
 	#
 	if haspackage "gnupg"; then
-		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
-#		echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
 		chmod go-rwx $mount/etc/skel/.config/gnupg
 
-		mkdir -p $mount/etc/skel/.config/environment.d
-		echo 'GNUPGHOME=${XDG_CONFIG_HOME:-$HOME/.config}/gnupg' > $mount/etc/skel/.config/environment.d/20-gnupg.conf
+		[[ ! -d "$mount/etc/skel/.config/environment.d" ]] && mkdir -p "$mount/etc/skel/.config/environment.d"
+		echo 'GNUPGHOME=${XDG_CONFIG_HOME:-$HOME/.config}/gnupg' > "$mount/etc/skel/.config/environment.d/20-gnupg.conf"
 	fi
 
 	#
