@@ -518,7 +518,7 @@ EOD
 		# install the readline config
 		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
-		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/readline/.profile' >> $mount/etc/skel/.bash_profile
+#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/readline/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
@@ -527,7 +527,7 @@ EOD
 	if haspackage "gnupg"; then
 		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
-		echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
+#		echo '. $GNUPGHOME/.rc' >> $mount/etc/skel/.bashrc
 		chmod go-rwx $mount/etc/skel/.config/gnupg
 
 		mkdir -p $mount/etc/skel/.config/environment.d
@@ -548,7 +548,7 @@ EOD
 	if haspackage "vim"; then
 		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
-		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
+#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
