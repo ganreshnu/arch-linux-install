@@ -551,7 +551,6 @@ EOD
 	if haspackage "vim"; then
 		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-vim.git vim
-#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/vim/.profile' >> $mount/etc/skel/.bash_profile
 	fi
 
 	#
