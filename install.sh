@@ -555,10 +555,8 @@ EOD
 	# bash configuration
 	#
 	if haspackage "bash"; then
-		mkdir -p "$mount/etc/skel/.config"
+		mkdir -p "$mount/etc/skel/.config" "$mount/etc/skel/.local/state" "$mount/etc/skel/.local/share"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.profile' >> $mount/etc/skel/.bash_profile
-#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.rc' >> $mount/etc/skel/.bashrc
 
 		cat > $mount/etc/profile.d/bash-config-profiles.sh <<-'EOD'
 		for prof in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.profile; do
@@ -579,7 +577,7 @@ EOD
 		ln -s .config/bash/bash_completion .bash_completion
 EOD
 	fi
-	
+
 	cat <<-EOD
 	
 	------------------------------
@@ -590,7 +588,7 @@ EOD
 	exit
 	
 EOD
-	
+
 	cat <<-EOD
 	
 	-------------------------
