@@ -290,7 +290,7 @@ install_dot_sh() { local showusage=-1
 			kernel_options="i915.fastboot=1 acpi_backlight=vendor"
 			;;
 		WSL2 )
-			packages="$CONTAINER_PACKAGES git vim sudo openssh
+			packages="$CONTAINER_PACKAGES git vim sudo libfido2 openssh
 				bash-completion man-db man-pages texinfo"
 
 			if [[ ! "$root" ]]; then
