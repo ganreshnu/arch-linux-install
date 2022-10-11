@@ -291,7 +291,9 @@ install_dot_sh() { local showusage=-1
 			;;
 		WSL2 )
 			packages="$CONTAINER_PACKAGES git vim sudo libfido2 openssh
-				bash-completion man-db man-pages texinfo"
+				bash-completion man-db man-pages texinfo
+				arch-install-scripts
+			"
 
 			if [[ ! "$root" ]]; then
 				error "need root device for WSL2"
