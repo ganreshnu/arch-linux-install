@@ -333,9 +333,8 @@ install_dot_sh() { local showusage=-1
 			kernel_options=""
 			;;
 		* )
-			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s - installing as basic container\n" "$platform"
-			packages="$CONTAINER_PACKAGES"
-			pacstrap -cGiM $mount $packages
+			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s\n" "$platform"
+			return 1
 			;;
 	esac
 
