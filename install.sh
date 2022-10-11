@@ -557,8 +557,22 @@ EOD
 	if haspackage "bash"; then
 		mkdir -p "$mount/etc/skel/.config"
 		git -C $mount/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
-		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.profile' >> $mount/etc/skel/.bash_profile
-		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.rc' >> $mount/etc/skel/.bashrc
+#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.profile' >> $mount/etc/skel/.bash_profile
+#		echo '. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/.rc' >> $mount/etc/skel/.bashrc
+
+		cat > $mount/etc/profile.d/bash-config-profiles.sh <<-'EOD'
+		for prof in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.profile; do
+			[[ -r "$prof" ]] && . "$prof"
+		done
+		unset prof
+EOD
+
+		cat >> $mount/etc/skel/.bashrc <<-'EOD'
+		for rc in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.rc; do
+			[[ -r "$rc" ]] && . "$rc"
+		done
+		unset rc
+EOD
 
 		haspackage "bash-completion" && arch-chroot $mount /bin/bash <<-EOD
 		cd /etc/skel
