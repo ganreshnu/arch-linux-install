@@ -18,7 +18,7 @@ Options:
   --platform PLATFORM            Configure for a specific platform.
   --boot DEVICE                  The device to configure as an EFI boot
                                  partition.
-  --root DEVICE                  The device to configure as the filewywtem
+  --root DEVICE                  The device to configure as the filesystem
                                  root.
   --swap DEVICE                  The device to configure as swap/resume.
 
