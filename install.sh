@@ -21,6 +21,12 @@ Options:
   --root DEVICE                  The device to configure as the filesystem
                                  root.
   --swap DEVICE                  The device to configure as swap/resume.
+  --locale LOCALE                The locales to install. May be passed
+                                 multiple times. Defaults to en_US.UTF-8.
+  --lang LANGUAGE                The system language. Defaults to the last
+                                 value passed to --locale.
+  --timezone TIMEZONE            The timezone to configure.
+  --hostname HOSTNAME            The system hostname.
 
 Install an Arch Linux Distribution. MOUNTPOINT defaults to /mnt.
 EOD
@@ -94,7 +100,8 @@ install_dot_sh() { local showusage=-1
 	#
 	# declare the variables derived from the arguments
 	#
-	local platform="" boot="" root="" swap="" mount="/mnt" firstboot=0
+	local platform="" boot="" root="" swap="" mount="/mnt" firstboot=0 timezone="" hostname=""
+	local locales=("en_US.UTF-8") lang=""
 
 	#
 	# parse the arguments
@@ -142,9 +149,45 @@ install_dot_sh() { local showusage=-1
 						shift
 					fi
 					;;
-				--use-firstboot )
-					firstboot=1
-					shift
+				--locale )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						locales+=("$2")
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
+				--lang )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						lang="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
+				--timezone )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						timezone="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
+					;;
+				--hostname )
+					if [[ $# -gt 1 && "$2" != -?* ]]; then
+						hostname="$2"
+						shift 2
+					else
+						error "$1 requires an argument"
+						showusage=1
+						shift
+					fi
 					;;
 				--help )
 					showusage=0
@@ -207,6 +250,9 @@ install_dot_sh() { local showusage=-1
 
 	# immediately set the host time
 	timedatectl set-ntp true || true
+
+	# default the system language variable
+	[[ ! "$lang" ]] && lang="${locales[-1]}"
 
 	local here=$(dirname "$BASH_SOURCE")
 	[[ ! "$platform" ]] && (platform="$(dmesg | grep '\] DMI: ')" || true)
@@ -305,7 +351,6 @@ install_dot_sh() { local showusage=-1
 			fi
 			mkfs.ext4 "$root"
 			mount "$root" "$mount"
-			echo "installing $packages"
 			pacstrap -cGiM $mount $packages
 			;;
 		LIVESTICK )
@@ -336,7 +381,7 @@ install_dot_sh() { local showusage=-1
 			arch-chroot $mount hwclock --systohc --update-drift
 			# set the keymap
 			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
-
+			[[ ! "$hostname" ]] && hostname="jwux"
 			kernel_options=""
 			;;
 		* )
@@ -394,6 +439,13 @@ EOD
 	fi
 
 	#
+	# timezone configuration
+	#
+	if haspackage "tzdata"; then
+		[[ "$timezone" ]] && arch-chroot ln -sf "/usr/share/zoneinfo/$timezone" /etc/localtime
+	fi
+
+	#
 	# systemd configuration
 	#
 	if haspackage "systemd"; then
@@ -426,22 +478,29 @@ EOD
 		[IPv6AcceptRA]
 		RouteMetric=20
 EOD
-		# use firstboot to get system information
-		mkdir -p $mount/etc/systemd/system/systemd-firstboot.service.d
-		cat > $mount/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
-		[Service]
-		ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
-		
-		[Install]
-		WantedBy=sysinit.target
-EOD
-		rm -f $mount/etc/machine-id
+
+		# set the hostname
+		[[ "$hostname" ]] && echo "$hostname" > $mount/etc/hostname
+
+		# set the system language
+		[[ "$lang" ]] && echo "LANG=$lang" > $mount/etc/locale.conf
+
+#		# use firstboot to get system information
+#		mkdir -p $mount/etc/systemd/system/systemd-firstboot.service.d
+#		cat > $mount/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
+#		[Service]
+#		ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
+#		
+#		[Install]
+#		WantedBy=sysinit.target
+#EOD
+#		rm -f $mount/etc/machine-id
+#		arch-chroot $mount systemctl enable systemd-firstboot.service
 
 		# enable the services
 		arch-chroot $mount /bin/bash <<-EOD
 		systemctl enable systemd-networkd.service
 		systemctl enable systemd-resolved.service
-		systemctl enable systemd-firstboot.service
 EOD
 		ln -sf /run/systemd/resolve/stub-resolv.conf $mount/etc/resolv.conf
 
@@ -471,10 +530,12 @@ EOD
 	# glibc configuration
 	#
 	if haspackage "glibc"; then
-		# uncomment language from $mount/etc/locale.gen
-		sed -i \
-			-e "/en_US.UTF-8/s/^#//g" \
-			$mount/etc/locale.gen
+		# uncomment languages from $mount/etc/locale.gen
+		local cmd="sed -i"
+		for l in "${locales[@]}"; do
+			cmd="$cmd -e '/$l/s/^#//g'"
+		done
+		eval "$cmd $mount/etc/locale.gen"
 		
 		# generate the language files
 		arch-chroot $mount locale-gen
