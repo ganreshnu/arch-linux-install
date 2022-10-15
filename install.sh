@@ -353,6 +353,16 @@ install_dot_sh() { local showusage=-1
 			mount "$root" "$mount"
 			pacstrap -cGiM $mount $packages
 			;;
+		container )
+			packages="$CONTAINER_PACKAGES"
+			if [[ ! "$root" ]]; then
+				error "need root device for container"
+				return 1
+			fi
+			mkfs.ext4 "$root"
+			mount "$root" "$mount"
+			pacstrap -cGiM $mount $packages
+			;;
 		LIVESTICK )
 			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
 				linux-firmware intel-ucode amd-ucode
