@@ -94,7 +94,7 @@ install_dot_sh() { local showusage=-1
 	#
 	# declare the variables derived from the arguments
 	#
-	local platform="" boot="" root="" swap="" mount="/mnt"
+	local platform="" boot="" root="" swap="" mount="/mnt" firstboot=0
 
 	#
 	# parse the arguments
@@ -141,6 +141,10 @@ install_dot_sh() { local showusage=-1
 						showusage=1
 						shift
 					fi
+					;;
+				--use-firstboot )
+					firstboot=1
+					shift
 					;;
 				--help )
 					showusage=0
@@ -301,6 +305,7 @@ install_dot_sh() { local showusage=-1
 			fi
 			mkfs.ext4 "$root"
 			mount "$root" "$mount"
+			echo "installing $packages"
 			pacstrap -cGiM $mount $packages
 			;;
 		LIVESTICK )
