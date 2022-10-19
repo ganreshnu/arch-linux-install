@@ -255,7 +255,7 @@ install_dot_sh() { local showusage=-1
 	[[ ! "$lang" ]] && lang="${locales[-1]}"
 
 	local here=$(dirname "$BASH_SOURCE")
-	[[ ! "$platform" ]] && (platform="$(dmesg | grep '\] DMI: ')" || true)
+	[[ ! "$platform" ]] && platform="$(dmesg | grep '\] DMI: ' || '')"
 
 	if [[ "$swap" ]]; then
 		mkswap "$swap"
@@ -319,8 +319,8 @@ install_dot_sh() { local showusage=-1
 				return 1
 			fi
 	
-			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt /dev/sda3
-			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime /dev/sda3 "$mount"
+			mkfs.f2fs -f -l root -O extra_attr,inode_checksum,sb_checksum,compression,encrypt "$root"
+			mount -o compress_algorithm=zstd:6,compress_chksum,gc_merge,lazytime "$root" "$mount"
 			mount --mkdir "$boot" "$mount/boot"
 	
 			# setup the bootloader
