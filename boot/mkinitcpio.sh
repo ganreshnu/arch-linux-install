@@ -243,9 +243,9 @@ mkinitcpio_dot_sh() { local showusage=-1
 	local config_file=$(mktemp)
 	cat > $config_file <<-EOD
 	MODULES=($mods)
-	HOOKS=(keyboard autodetect systemd modconf block filesystems fsck)
+	HOOKS=(systemd modconf fsck)
 EOD
-	mkinitcpio --config $config_file --splash /usr/share/systemd/bootctl/splash-arch.bmp \
+	mkinitcpio --config $config_file \ # --splash /usr/share/systemd/bootctl/splash-arch.bmp \
 		--cmdline $cmdline_file --kernel "$(ls /usr/lib/modules |tail -n1)" \
 		--uefi $esp_path/EFI/Linux/archlinux-systemd.efi $microcode
 
