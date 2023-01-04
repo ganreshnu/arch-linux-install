@@ -32,7 +32,6 @@ Install an Arch Linux Distribution. MOUNTPOINT defaults to /mnt.
 EOD
 }
 
-
 #
 # script autocomplete
 #
@@ -90,6 +89,9 @@ set -euo pipefail
 #
 error() {
 	>&2 printf "$(tput bold; tput setaf 1)error:$(tput sgr0) %s\n" "$@"
+}
+msg() {
+	>&2 printf "$(tput bold; tput setaf 2)msg:$(tput sgr0) %s\n" "$@"
 }
 
 #
@@ -227,21 +229,17 @@ install_dot_sh() { local showusage=-1
 	#
 
 	local uuid_boot="" uuid_root="" uuid_swap=""
-	partuuid() {
-		(blkid | grep "^$1" | sed 's/.*PARTUUID="\([[:alnum:]-]\+\)".*/\1/g') || \
-			(error "could not find a uuid for device $1"; return 1)
-	}
 	if [[ "$boot" ]]; then
 		# find the uuid
-		uuid_boot=$(partuuid "$boot")
+		uuid_boot=$(blkid --match-tag PARTUUID --output value "$boot")
 	fi
 	if [[ "$root" ]]; then
 		# find the uuid and device name
-		uuid_root=$(partuuid "$root")
+		uuid_root=$(blkid --match-tag PARTUUID --output value "$root")
 	fi
 	if [[ "$swap" ]]; then
 		# find the uuid and device name
-		uuid_swap=$(partuuid "$swap")
+		uuid_swap=$(blkid --match-tag PARTUUID --output value "$swap")
 	fi
 
 	#
@@ -262,9 +260,9 @@ install_dot_sh() { local showusage=-1
 		swapon "$swap"
 	fi
 
-	if [[ "$boot" ]]; then
-		mkfs.fat -F 32 "$boot"
-	fi
+#	if [[ "$boot" ]]; then
+#		mkfs.fat -F 32 "$boot"
+#	fi
 
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
 	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs reflector rsync"
@@ -295,7 +293,7 @@ install_dot_sh() { local showusage=-1
 			bootctl --esp-path="$mount/boot" install
 
 			# bootstrap the install
-			pacstrap -i $mount $packages
+			pacstrap -KMci $mount $packages
 
 			# generate the fstab
 			genfstab -U $mount >> $mount/etc/fstab
@@ -375,20 +373,25 @@ install_dot_sh() { local showusage=-1
 				return 1
 			fi
 
-			mkfs.ext4 "$root"
-			mount "$root" "$mount"
-			mount --mkdir "$boot" "$mount/boot"
+#			mkfs.udf --label ARCHISO "$root"
+#			mount "$root" "$mount"
+#			mount --mkdir "$boot" "$mount/boot"
 
 			# setup the bootloader
-			bootctl --esp-path="$mount/boot" install
+#			bootctl --esp-path="$mount/boot" install
+#
+#			pacstrap -cGiM $mount $packages
 
-			pacstrap -cGiM $mount $packages
-
+			msg "pacstrap finished"
 			# generate the fstab
-			genfstab -U $mount >> $mount/etc/fstab
+			genfstab -U $mount > $mount/etc/fstab
+
+			msg "generated fstab"
 
 			# setup the hw clock
 			arch-chroot $mount hwclock --systohc --update-drift
+			msg "setup hw clock"
+
 			# set the keymap
 			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
 			[[ ! "$hostname" ]] && hostname="jwux"
@@ -400,6 +403,8 @@ install_dot_sh() { local showusage=-1
 			;;
 	esac
 
+	msg "configuring packages"
+
 	packages="$(arch-chroot $mount pacman -Qq)"
 	haspackage() {
 		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
@@ -409,7 +414,6 @@ install_dot_sh() { local showusage=-1
 	# configure the linux kernel
 	#
 	if haspackage "linux"; then
-
 		local microcode="" initrd=""
 		for mc in $mount/boot/*-ucode.img; do
 			microcode="$microcode --microcode /boot/$(basename $mc)"
@@ -452,7 +456,7 @@ EOD
 	# timezone configuration
 	#
 	if haspackage "tzdata"; then
-		[[ "$timezone" ]] && arch-chroot ln -sf "/usr/share/zoneinfo/$timezone" /etc/localtime
+		[[ "$timezone" ]] && arch-chroot $mount ln -sf "/usr/share/zoneinfo/$timezone" /etc/localtime
 	fi
 
 	#
@@ -495,19 +499,7 @@ EOD
 		# set the system language
 		[[ "$lang" ]] && echo "LANG=$lang" > $mount/etc/locale.conf
 
-#		# use firstboot to get system information
-#		mkdir -p $mount/etc/systemd/system/systemd-firstboot.service.d
-#		cat > $mount/etc/systemd/system/systemd-firstboot.service.d/override.conf <<-EOD
-#		[Service]
-#		ExecStart=/usr/bin/systemd-firstboot --prompt-locale --prompt-timezone --prompt-hostname
-#		
-#		[Install]
-#		WantedBy=sysinit.target
-#EOD
-#		rm -f $mount/etc/machine-id
-#		arch-chroot $mount systemctl enable systemd-firstboot.service
-
-		# enable the services
+		# enable the networking services
 		arch-chroot $mount /bin/bash <<-EOD
 		systemctl enable systemd-networkd.service
 		systemctl enable systemd-resolved.service
@@ -584,7 +576,6 @@ EOD
 		chmod 0750 $mount/etc/sudoers.d
 	fi
 
-
 	#
 	# filesystem configuration
 	#
@@ -656,6 +647,7 @@ EOD
 		ln -s .config/bash/bash_completion .bash_completion
 EOD
 	fi
+
 
 	cat <<-EOD
 	
