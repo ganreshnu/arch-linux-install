@@ -260,9 +260,9 @@ install_dot_sh() { local showusage=-1
 		swapon "$swap"
 	fi
 
-#	if [[ "$boot" ]]; then
-#		mkfs.fat -F 32 "$boot"
-#	fi
+	if [[ "$boot" ]]; then
+		mkfs.fat -F 32 "$boot"
+	fi
 
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
 	local CONTAINER_PACKAGES="base iptables-nft btrfs-progs reflector rsync"
@@ -373,14 +373,14 @@ install_dot_sh() { local showusage=-1
 				return 1
 			fi
 
-#			mkfs.udf --label ARCHISO "$root"
-#			mount "$root" "$mount"
-#			mount --mkdir "$boot" "$mount/boot"
+			mkfs.udf --label ARCHISO "$root"
+			mount "$root" "$mount"
+			mount --mkdir "$boot" "$mount/boot"
 
-			# setup the bootloader
-#			bootctl --esp-path="$mount/boot" install
-#
-#			pacstrap -cGiM $mount $packages
+  			# setup the bootloader
+			bootctl --esp-path="$mount/boot" install
+
+			pacstrap -cGiM $mount $packages
 
 			msg "pacstrap finished"
 			# generate the fstab
