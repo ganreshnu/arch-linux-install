@@ -251,7 +251,7 @@ mkinitcpio_dot_sh() { local showusage=-1
 	local config_file=$(mktemp)
 	cat > $config_file <<-EOD
 	MODULES=($mods)
-	HOOKS=(systemd modconf fsck)
+	HOOKS=(systemd modconf)
 EOD
 	mkinitcpio --config $config_file \ # --splash /usr/share/systemd/bootctl/splash-arch.bmp \
 		--cmdline $cmdline_file --kernel "$(ls /usr/lib/modules |tail -n1)" \
