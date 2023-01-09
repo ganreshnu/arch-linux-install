@@ -247,7 +247,7 @@ mkinitcpio_dot_sh() { local showusage=-1
 EOD
 	mkinitcpio --config $config_file \ # --splash /usr/share/systemd/bootctl/splash-arch.bmp \
 		--cmdline $cmdline_file --kernel "$(ls /usr/lib/modules |tail -n1)" \
-		--uefi $esp_path/EFI/Linux/archlinux-systemd.efi $microcode
+		--uki $esp_path/EFI/Linux/archlinux-systemd.efi $microcode
 
 	rm $cmdline_file
 	rm $config_file
