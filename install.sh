@@ -261,7 +261,7 @@ install_dot_sh() { local showusage=-1
 	fi
 
 	if [[ "$boot" ]]; then
-		mkfs.fat -F 32 "$boot"
+		mkfs.fat -F 32 -n "EFI" "$boot"
 	fi
 
 	local KERNEL_PACKAGES="linux wireless-regdb mkinitcpio"
@@ -373,29 +373,38 @@ install_dot_sh() { local showusage=-1
 				return 1
 			fi
 
-			mkfs.udf --label ARCHISO "$root"
+			mkfs.udf --label JWUX "$root"
+#			mkfs.ext4 -O "^has_journal" "$root"
+
 			mount "$root" "$mount"
 			mount --mkdir "$boot" "$mount/boot"
+
+			pacstrap -cGiM $mount $packages
 
   			# setup the bootloader
 			bootctl --esp-path="$mount/boot" install
 
-			pacstrap -cGiM $mount $packages
-
-			msg "pacstrap finished"
+			swapoff --all
 			# generate the fstab
 			genfstab -U $mount > $mount/etc/fstab
-
-			msg "generated fstab"
+			swapon --all
 
 			# setup the hw clock
 			arch-chroot $mount hwclock --systohc --update-drift
-			msg "setup hw clock"
 
 			# set the keymap
 			echo 'KEYMAP=us' > $mount/etc/vconsole.conf
 			[[ ! "$hostname" ]] && hostname="jwux"
 			kernel_options=""
+
+			mkdir -p "$mount/etc/systemd/journald.conf.d"
+			cat > "$mount/etc/systemd/journald.conf.d/10-volatile.conf" <<EOD
+[Journal]
+Storage=volatile
+SystemMaxUse=16M
+RuntimeMaxUse=30M
+EOD
+
 			;;
 		* )
 			printf "$(tput setaf 3)unknown platform:$(tput sgr0) %s\n" "$platform"
