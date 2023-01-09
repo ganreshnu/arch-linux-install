@@ -26,6 +26,7 @@ Options:
                                 multiple times.
   --esp-path DIRECTORY          Alternate esp path. (default /boot)
   --reboot                      Reboot after install.
+  --verbose                     Show kernel messages.
 
 EOD
 }
@@ -171,6 +172,10 @@ mkinitcpio_dot_sh() { local showusage=-1
 					reboot=yes
 					shift
 					;;
+				--verbose )
+					verbose=yes
+					shift
+					;;
 				--help )
 					showusage=0
 					shift
@@ -219,7 +224,10 @@ mkinitcpio_dot_sh() { local showusage=-1
 	
 	# generate command line
 	local cmdline_file=$(mktemp)
-	local cmdline="root=$1 quiet consoleblank=60"
+	local cmdline=""
+	cmdline="root=$1 consoleblank=60"
+	[[ $verbose ]] && cmdline="$cmdline ignore_loglevel" || cmdline="$cmdline quiet"
+
 	[[ $resume ]] && cmdline="$cmdline resume=$resume"
 	for i in ${opts[@]}; do
 		cmdline="$cmdline $i"
