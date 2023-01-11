@@ -275,7 +275,7 @@ install_dot_sh() { local showusage=-1
 
 	local packages=""
 	case "$platform" in
-		*Hyper-v\ UEFI* )
+		*Hyper-V\ UEFI* )
 			packages="$KERNEL_PACKAGES $WORKSTATION_PACKAGES
 				hyperv e2fsprogs
 			"
