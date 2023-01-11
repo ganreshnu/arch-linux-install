@@ -293,7 +293,7 @@ install_dot_sh() { local showusage=-1
 			bootctl --esp-path="$mount/boot" install
 
 			# bootstrap the install
-			pacstrap -KMci $mount $packages
+			pacstrap -KMi $mount $packages
 
 			# generate the fstab
 			genfstab -U $mount >> $mount/etc/fstab
