@@ -225,8 +225,8 @@ mkinitcpio_dot_sh() { local showusage=-1
 	# generate command line
 	local cmdline_file=$(mktemp)
 	local cmdline=""
-	cmdline="root=$1 consoleblank=60"
-	[[ $verbose ]] && cmdline="$cmdline ignore_loglevel" || cmdline="$cmdline quiet"
+	cmdline="root=$1"
+	[[ $verbose ]] && cmdline="$cmdline ignore_loglevel" || cmdline="$cmdline quiet consoleblank=60"
 
 	[[ $resume ]] && cmdline="$cmdline resume=$resume"
 	for i in ${opts[@]}; do
