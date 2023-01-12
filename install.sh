@@ -446,8 +446,8 @@ EOD
 			opts="$opts --opt $opt"
 		done
 		
-		resume=""
-		[[ "$swap" ]] && resume="--resume PARTUUID=$uuid_swap"
+		cmdline=""
+		[[ "$swap" ]] && cmdline="resume=PARTUUID=$uuid_swap"
 		cat > $mount/etc/systemd/system/make-unified-init.service <<-EOD
 		[Unit]
 		Description=Make unified kernel image
@@ -455,7 +455,10 @@ EOD
 		
 		[Service]
 		Type=oneshot
-		ExecStart=-/root/arch-linux-install/boot/mkinitcpio.sh $resume $microcode $opts PARTUUID=$uuid_root
+		ExecStartPre=/bin/bash -c 'echo "MODULES=($modules)\\nHOOKS=(autodetect block modconf systemd)" > /tmp/make-unified-init.conf'
+		ExecStartPre=/bin/bash -c 'echo "$cmdline" > /tmp/make-unified-init.cmdline'
+		ExecStart=/usr/bin/mkinitcpio --config /tmp/make-unified-init.conf --cmdline /tmp/make-unified-init.cmdline --uki /boot/EFI/Linux/archlinux-systemd.efi $microcode
+		ExecStartPost=/bin/bash -c 'rm /tmp/make-unified-init.*'
 		StandardOutput=journal
 		StandardError=journal+console
 EOD
