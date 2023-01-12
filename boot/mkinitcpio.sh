@@ -107,6 +107,7 @@ mkinitcpio_dot_sh() { local showusage=-1
 	local microcode=""
 	local resume=""
 	local reboot=""
+	local verbose=""
 
 	#
 	# parse the arguments
