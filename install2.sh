@@ -175,7 +175,7 @@ format() {
 
 	dev="$(getprop $bootuuid 2)"
 	if [[ "$dev" ]]; then
-		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$bootdev"
+		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$dev"
 		mounted="$(getprop $bootuuid 4)"
 		if [[ ! "$mounted" ]]; then
 			mkdir -p "$mp/boot"
