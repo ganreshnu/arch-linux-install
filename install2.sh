@@ -81,7 +81,7 @@ EOD
 
 declare -A args=(
 	[lang]="$LANG"
-	[timezone]="$(</etc/timezone)"
+	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
 	[platform]="$(cat /sys/class/dmi/id/product_name)"
 )
@@ -178,7 +178,7 @@ main() {
 	#
 
 	if [[ "${args[platform]}" ]]; then
-		echo "need to find the platform name from dmi"
+		echo "find the requisite files to install the platform"
 
 	else
 		msg error 1 "platform is required and could not be detected"
