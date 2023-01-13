@@ -159,9 +159,12 @@ main() {
 	parseargs "$@" && set -- ${args[_]} && unset args[_]
 	local showusage=$1; shift
 
+	local mp=""
 	if [[ $# -gt 0 && "$1" ]]; then
-		args[platform]="$1"
+		mp="$1"
 		shift
+	else
+		mp="/mnt"
 	fi
 
 	#
@@ -186,10 +189,27 @@ main() {
 	#
 
 	# immediately set the host time
-	timedatectl set-ntp true || true
+	timedatectl set-ntp true 2>/dev/null || true
 
-	local here=$(dirname "$BASH_SOURCE")
+	local PACKAGES=(base iptables-nft reflector polkit)
+	local DOCS=(man-db man-pages texinfo)
+	local CMDLINE=(sudo bash-completion git vim)
 
+	case "${args[platform]}" in
+		"Virtual Machine" )
+			PACKAGES+=(hyperv firewalld tpm2-tss libfido2 openssh ${CMDLINE[@]})
+			;;
+		"MacBookAir5,2" )
+
+			echo mba
+			;;
+		* )
+			echo unk
+			;;
+	esac
+
+	echo "${PACKAGES[@]}"
+#	pacstrap -iKM $mp "${PACKAGES[@]}"
 
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
