@@ -122,7 +122,6 @@ parseargs() {
 		fi
 	done
 	args[_]="$showusage $@"
-#	args[-]=$showusage
 }
 
 #
