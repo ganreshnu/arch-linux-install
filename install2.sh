@@ -74,7 +74,6 @@ Options:
 
   --platform DIRECTORY           The target platform from which to derive
                                  configuration.
-  --format                       Format any discovered disk partitions.
 
 Install an Arch Linux Distribution.
 EOD
@@ -85,7 +84,6 @@ declare -A args=(
 	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
 	[platform]="$([[ -f /sys/class/dmi/id/product_name ]] && cat /sys/class/dmi/id/product_name)"
-	[format]="no"
 )
 
 parseargs() {
@@ -204,20 +202,23 @@ main() {
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim)
 
+	local filesystem
 	case "${args[platform]}" in
-		"Virtual Machine" )
+		'Virtual Machine' )
 			PACKAGES+=(hyperv firewalld tpm2-tss libfido2 openssh "${CMDLINE[@]}")
+			format 'ext4'
 			;;
-		"MacBookAir5,2" )
-
+		'MacBookAir5,2' )
+			format 'f2fs'
 			echo mba
 			;;
 		* )
+			format 'fat'
 			echo unk
 			;;
 	esac
 
-	pacstrap -iKM $mp "${PACKAGES[@]}"
+#	pacstrap -iKM $mp "${PACKAGES[@]}"
 
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
