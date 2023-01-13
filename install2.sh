@@ -170,7 +170,7 @@ format() {
 	if [[ "$dev" ]]; then
 		[[ "$(getprop $rootuuid 3)" != 'ext4' ]] && mkfs.ext4 "$dev"
 		mounted="$(getprop $rootuuid 4)"
-		[[ "$mounted" ]] || mount "$dev" "$mp"
+		[[ "$mounted" ]] || mount "$dev" "$MOUNTPOINT"
 	fi
 
 	dev="$(getprop $bootuuid 2)"
@@ -178,8 +178,8 @@ format() {
 		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$dev"
 		mounted="$(getprop $bootuuid 4)"
 		if [[ ! "$mounted" ]]; then
-			mkdir -p "$mp/boot"
-			mount "$dev" "$mp/boot"
+			mkdir -p "$MOUNTPOINT/boot"
+			mount "$dev" "$MOUNTPOINT/boot"
 		fi
 	fi
 
@@ -196,8 +196,8 @@ main() {
 	parseargs "$@" && set -- ${args[_]} && unset args[_]
 	local showusage=$1; shift
 
-	local mp
-	[[ $# -gt 0 && "$1" ]] && mp="$1" || mp="/mnt"
+	local MOUNTPOINT=''
+	[[ $# -gt 0 && "$1" ]] && MOUNTPOINT="$1" || MOUNTPOINT="/mnt"
 
 	#
 	# argument type validation goes here
@@ -243,7 +243,7 @@ main() {
 			;;
 	esac
 
-#	pacstrap -iKM $mp "${PACKAGES[@]}"
+	pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"
 
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
