@@ -180,6 +180,8 @@ format() {
 	if [[ "$bootdev" ]]; then
 		[[ "$bootfs" != 'vfat' ]] && mkfs.fat -F 32 "$bootdev"
 	fi
+
+	return 0
 }
 
 #
