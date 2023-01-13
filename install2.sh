@@ -72,6 +72,9 @@ Options:
                                  system's timezone.
   --hostname STRING              The sytem hostname. Defaults to 'jwux'.
 
+  PLATFORM DIRECTORY             The target platform from which to derive
+                                 configuration.
+
 Install an Arch Linux Distribution.
 EOD
 }
@@ -80,7 +83,7 @@ declare -A args=(
 	[lang]="$LANG"
 	[timezone]="$(</etc/timezone)"
 	[hostname]="jwux"
-	[platform]="$(dmesg | grep '\] DMI: ' || echo '')"
+	[platform]="$(cat /sys/class/dmi/id/product_name)"
 )
 
 parseargs() {
