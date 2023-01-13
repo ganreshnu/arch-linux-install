@@ -178,7 +178,7 @@ format() {
 	fi
 
 	if [[ "$bootdev" ]]; then
-		[[ "$bootfs" != 'fat' ]] && mkfs.fat -F 32 "$bootdev"
+		[[ "$bootfs" != 'vfat' ]] && mkfs.fat -F 32 "$bootdev"
 	fi
 }
 
