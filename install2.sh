@@ -180,8 +180,7 @@ main() {
 	# find efi device
 	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
 
-	msg log 4 "value passed was: ${args[value]}"
-	msg log 4 "message passed was: ${args[message]}"
+	msg log 4 "swap=$swap root=$root boot=$boot"
 	[[ $# -gt 0 ]] && msg warn 3 "extra args: $@"
 
 	return 0
