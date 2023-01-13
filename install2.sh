@@ -170,7 +170,7 @@ main() {
 	local here=$(dirname "$BASH_SOURCE")
 
 	findpart() {
-		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "'/$1/ {print \$1}'"
+		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
 	}
 	# find swap device
 	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
