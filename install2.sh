@@ -72,8 +72,9 @@ Options:
                                  system's timezone.
   --hostname STRING              The sytem hostname. Defaults to 'jwux'.
 
-  --platform DIRECTORY             The target platform from which to derive
+  --platform DIRECTORY           The target platform from which to derive
                                  configuration.
+  --format                       Format any discovered disk partitions.
 
 Install an Arch Linux Distribution.
 EOD
@@ -84,6 +85,7 @@ declare -A args=(
 	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
 	[platform]="$([[ -f /sys/class/dmi/id/product_name ]] && cat /sys/class/dmi/id/product_name)"
+	[format]="no"
 )
 
 parseargs() {
@@ -148,6 +150,18 @@ msg() {
 	>&2 printf "$(tput bold; tput setaf $color)%s:$(tput sgr0) %s\n" "$tag" "$@"
 }
 
+format() {
+	findpart() {
+		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
+	}
+	# find swap device
+	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
+	# find root device
+	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
+	# find efi device
+	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
+	msg log 4 "swap=$swap root=$root boot=$boot"
+}
 
 #
 # define the main encapsulation function
@@ -159,13 +173,8 @@ main() {
 	parseargs "$@" && set -- ${args[_]} && unset args[_]
 	local showusage=$1; shift
 
-	local mp=""
-	if [[ $# -gt 0 && "$1" ]]; then
-		mp="$1"
-		shift
-	else
-		mp="/mnt"
-	fi
+	local mp
+	[[ $# -gt 0 && "$1" ]] && mp="$1" || mp="/mnt"
 
 	#
 	# argument type validation goes here
@@ -197,7 +206,7 @@ main() {
 
 	case "${args[platform]}" in
 		"Virtual Machine" )
-			PACKAGES+=(hyperv firewalld tpm2-tss libfido2 openssh ${CMDLINE[@]})
+			PACKAGES+=(hyperv firewalld tpm2-tss libfido2 openssh "${CMDLINE[@]}")
 			;;
 		"MacBookAir5,2" )
 
@@ -208,23 +217,11 @@ main() {
 			;;
 	esac
 
-	echo "${PACKAGES[@]}"
-#	pacstrap -iKM $mp "${PACKAGES[@]}"
+	pacstrap -iKM $mp "${PACKAGES[@]}"
 
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
 	done
-
-#	findpart() {
-#		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
-#	}
-#	# find swap device
-#	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
-#	# find root device
-#	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
-#	# find efi device
-#	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
-#	msg log 4 "swap=$swap root=$root boot=$boot"
 
 	return 0
 }
