@@ -63,45 +63,53 @@ set -euo pipefail
 #
 usage() {
 	cat <<EOD
-Usage: $(basename "$BASH_SOURCE") [OPTIONS]
+Usage: $(basename "$BASH_SOURCE") [OPTIONS] [PLATFORM]
 
 Options:
   --help                         Show this message and exit.
-  --value STRING                 A value.
-  --message STRING               A message.
+  --lang LANGUAGE                The system language. Defaults to \$LANG.
+  --timezone TIMEZONE            The system timezone. Defaults to the current
+                                 system's timezone.
+  --hostname STRING              The sytem hostname. Defaults to 'jwux'.
 
 Install an Arch Linux Distribution.
 EOD
 }
 
 declare -A args=(
-	[value]=""
-	[message]=""
+	[lang]="$LANG"
+	[timezone]="$(</etc/timezone)"
+	[hostname]="jwux"
+	[platform]="$(dmesg | grep '\] DMI: ' || echo '')"
 )
 
 parseargs() {
-	local showusage=-1 value="" remove=0
+	local showusage=-1 value="" sc=0
 	getvalue() {
 		name="$1"; shift
 		if [[ $# -gt 1 && "$2" != -?* ]]; then
 			args["$name"]="$2"
-			remove=2
+			sc=2
 		else
 			msg error 1 "$1 requires an argument"
-			showusage=1 remove=1
+			showusage=1 sc=1
 		fi
 	}
 
 	while true; do
 		if [[ $# -gt 0 && "$1" == -* ]]; then
 			case "$1" in
-				--value )
-					getvalue value "$@"
-					shift $remove
+				--lang )
+					getvalue lang "$@"
+					shift $sc
 					;;
-				--message )
-					getvalue message "$@"
-					shift $remove
+				--timezone )
+					getvalue timezone "$@"
+					shift $sc
+					;;
+				--hostname )
+					getvalue hostname "$@"
+					shift $sc
 					;;
 				--help )
 					showusage=0
@@ -141,13 +149,19 @@ main() {
 	#
 	# parse the arguments
 	#
-	parseargs "$@" && set -- ${args[_]}
+	parseargs "$@" && set -- ${args[_]} && unset args[_]
 	local showusage=$1; shift
+
+	if [[ $# -gt 0 && "$1" ]]; then
+		args[platform]="$1"
+		shift
+	fi
 
 	#
 	# argument type validation goes here
 	#
 
+	[[ $# -gt 0 ]] && msg warn 3 "extra args: $@"
 	#
 	# show help if necessary
 	#
@@ -160,6 +174,14 @@ main() {
 	# argument value validation goes here
 	#
 
+	if [[ "${args[platform]}" ]]; then
+		echo "need to find the platform name from dmi"
+
+	else
+		msg error 1 "platform is required and could not be detected"
+		return 1
+	fi
+
 	#
 	# script begins
 	#
@@ -169,19 +191,21 @@ main() {
 
 	local here=$(dirname "$BASH_SOURCE")
 
-	findpart() {
-		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
-	}
-	# find swap device
-	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
-	
-	# find root device
-	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
-	# find efi device
-	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
 
-	msg log 4 "swap=$swap root=$root boot=$boot"
-	[[ $# -gt 0 ]] && msg warn 3 "extra args: $@"
+	for key in "${!args[@]}"; do
+		printf '%s = %s\n' "$key" "${args[$key]}"
+	done
+
+#	findpart() {
+#		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
+#	}
+#	# find swap device
+#	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
+#	# find root device
+#	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
+#	# find efi device
+#	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
+#	msg log 4 "swap=$swap root=$root boot=$boot"
 
 	return 0
 }
