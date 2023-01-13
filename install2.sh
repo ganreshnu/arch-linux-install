@@ -72,7 +72,7 @@ Options:
                                  system's timezone.
   --hostname STRING              The sytem hostname. Defaults to 'jwux'.
 
-  PLATFORM DIRECTORY             The target platform from which to derive
+  --platform DIRECTORY             The target platform from which to derive
                                  configuration.
 
 Install an Arch Linux Distribution.
@@ -83,7 +83,7 @@ declare -A args=(
 	[lang]="$LANG"
 	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
-	[platform]="$(cat /sys/class/dmi/id/product_name)"
+	[platform]="$([[ -f /sys/class/dmi/id/product_name ]] && cat /sys/class/dmi/id/product_name)"
 )
 
 parseargs() {
@@ -112,6 +112,10 @@ parseargs() {
 					;;
 				--hostname )
 					getvalue hostname "$@"
+					shift $sc
+					;;
+				--platform )
+					getvalue platform "$@"
 					shift $sc
 					;;
 				--help )
@@ -176,14 +180,6 @@ main() {
 	#
 	# argument value validation goes here
 	#
-
-	if [[ "${args[platform]}" ]]; then
-		echo "find the requisite files to install the platform"
-
-	else
-		msg error 1 "platform is required and could not be detected"
-		return 1
-	fi
 
 	#
 	# script begins
