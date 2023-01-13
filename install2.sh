@@ -160,7 +160,7 @@ format() {
 #		fs=$(lsblk --noheadings --paths --raw --output NAME,FSTYPE | awk "/$swap/ {print \$2}")
 #	}
 	# find swap device
-	swapdev=$(echo "$partitions" | awk "\$1 == /$swapuuid/ {print \$2}")
+	swapdev=$(echo "$partitions" | awk "\$1 == \"$swapuuid\" {print \$2}")
 #	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
 	# find root device
 #	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
