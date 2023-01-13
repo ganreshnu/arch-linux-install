@@ -153,32 +153,34 @@ format() {
 	local rootuuid='4f68bce3-e8cd-4db1-96e7-fbcaf984b709'
 	local bootuuid='c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
 
-	local partitions=$(lsblk --noheadings --paths --raw --output PARTTYPE,NAME,FSTYPE)
+	local partitions=$(lsblk --noheadings --paths --raw --output PARTTYPE,NAME,FSTYPE,MOUNTPOINT)
+	getprop() {
+		echo "$partitions" | awk "\$1 == \"$1\" { print \$$2 }"
+	}
 
-	local swapdev=$(echo "$partitions" | awk "\$1 == \"$swapuuid\" {print \$2}")
-	local rootdev=$(echo "$partitions" | awk "\$1 == \"$rootuuid\" {print \$2}")
-	local bootdev=$(echo "$partitions" | awk "\$1 == \"$bootuuid\" {print \$2}")
-
-	local swapfs=$(echo "$partitions" | awk "\$1 == \"$swapuuid\" {print \$3}")
-	local rootfs=$(echo "$partitions" | awk "\$1 == \"$rootuuid\" {print \$3}")
-	local bootfs=$(echo "$partitions" | awk "\$1 == \"$bootuuid\" {print \$3}")
-
-	msg log 4 "swapdev=$swapdev swapfs=$swapfs"
-	msg log 4 "rootdev=$rootdev rootfs=$rootfs"
-	msg log 4 "bootdev=$bootdev bootfs=$bootfs"
-
-	if [[  "$swapdev" ]]; then
-		[[ "$swapfs" != 'swap' ]] && mkswap "$swapdev"
-		local ison=$(swapon --show=NAME --noheadings --raw |grep "$swapdev")
-		[[ $ison ]] || swapon "$swapdev"
+	local mounted='' dev=''
+	dev="$(getprop $swapuuid 2)"
+	if [[  "$dev" ]]; then
+		[[ "$(getprop $swapuuid 3)" != 'swap' ]] && mkswap "$dev"
+		mounted="$(getprop $swapuuid 4)"
+		[[ "$mounted" ]] || swapon "$dev"
 	fi
 
-	if [[ "$rootdev" ]]; then
-		[[ "$rootfs" != 'ext4' ]] && mkfs.ext4 "$rootdev"
+	dev="$(getprop $rootuuid 2)"
+	if [[ "$dev" ]]; then
+		[[ "$(getprop $rootuuid 3)" != 'ext4' ]] && mkfs.ext4 "$dev"
+		mounted="$(getprop $rootuuid 4)"
+		[[ "$mounted" ]] || mount "$dev" "$mp"
 	fi
 
-	if [[ "$bootdev" ]]; then
-		[[ "$bootfs" != 'vfat' ]] && mkfs.fat -F 32 "$bootdev"
+	dev="$(getprop $bootuuid 2)"
+	if [[ "$dev" ]]; then
+		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$bootdev"
+		mounted="$(getprop $bootuuid 4)"
+		if [[ ! "$mounted" ]]; then
+			mkdir -p "$mp/boot"
+			mount "$dev" "$mp/boot"
+		fi
 	fi
 
 	return 0
