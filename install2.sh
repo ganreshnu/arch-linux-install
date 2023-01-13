@@ -149,16 +149,24 @@ msg() {
 }
 
 format() {
-	findpart() {
-		lsblk --noheadings --output NAME,PARTTYPE --paths --raw | awk "/$1/ {print \$1}"
-	}
+	local swapuuid='0657fd6d-a4ab-43c4-84e5-0933c84b4f4f'
+	local rootuuid='4f68bce3-e8cd-4db1-96e7-fbcaf984b709'
+	local bootuuid='c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
+
+	local swapdev="" rootdev="" bootdev=""
+	local partitions=$(lsblk --noheadings --paths --raw --output PARTTYPE,NAME,FSTYPE)
+#	findpart() {
+#		dev=$(lsblk --noheadings --paths --raw --output NAME,PARTTYPE | awk "$1 == /$1/ {print \$1}")
+#		fs=$(lsblk --noheadings --paths --raw --output NAME,FSTYPE | awk "/$swap/ {print \$2}")
+#	}
 	# find swap device
-	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
+	swapdev=$(echo "$partitions" | awk "\$1 == /$swapuuid/ {print \$2}")
+#	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
 	# find root device
-	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
-	# find efi device
-	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
-	msg log 4 "swap=$swap root=$root boot=$boot"
+#	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
+#	# find efi device
+#	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
+	msg log 4 "swap=$swapdev root=$rootdev boot=$bootdev"
 }
 
 #
