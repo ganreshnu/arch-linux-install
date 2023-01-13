@@ -163,14 +163,23 @@ format() {
 	local rootfs=$(echo "$partitions" | awk "\$1 == \"$rootuuid\" {print \$3}")
 	local bootfs=$(echo "$partitions" | awk "\$1 == \"$bootuuid\" {print \$3}")
 
-#	swap=$(findpart '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f')
-	# find root device
-#	root=$(findpart '4f68bce3-e8cd-4db1-96e7-fbcaf984b709')
-#	# find efi device
-#	boot=$(findpart 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b')
 	msg log 4 "swapdev=$swapdev swapfs=$swapfs"
 	msg log 4 "rootdev=$rootdev rootfs=$rootfs"
 	msg log 4 "bootdev=$bootdev bootfs=$bootfs"
+
+	if [[  "$swapdev" ]]; then
+		[[ "$swapfs" != 'swap' ]] && mkswap "$swapdev"
+		local ison=$(swapon --show=NAME --noheadings --raw |grep "$swapdev")
+		[[ $ison ]] || swapon "$swapdev"
+	fi
+
+	if [[ "$rootdev" ]]; then
+		[[ "$rootfs" != 'ext4' ]] && mkfs.ext4 "$rootdev"
+	fi
+
+	if [[ "$bootdev" ]]; then
+		[[ "$bootfs" != 'fat' ]] && mkfs.fat -F 32 "$bootdev"
+	fi
 }
 
 #
