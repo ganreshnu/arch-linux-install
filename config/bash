@@ -1,11 +1,9 @@
 original() {
-	pacman -Sy
 	file="$(readlink -f "$1")"
 	pkgname="$(pacman -Qoq "$file")"
 	url="$(pacman -Sp "$pkgname")"
 
 	curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$1"
-	return 0
 }
 config() {
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
