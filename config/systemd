@@ -1,0 +1,48 @@
+config() {
+	# setup the ethernet network
+	cat > $MOUNTPOINT/etc/systemd/network/ethernet.network <<-'EOD'
+	[Match]
+	Name=e*
+
+	[Network]
+	DHCP=ipv4
+
+	[DHCPv4]
+	RouteMetric=10
+
+	[IPv6AcceptRA]
+	RouteMetric=10
+EOD
+	# setup the wireless network
+	cat > $MOUNTPOINT/etc/systemd/network/wireless.network <<-'EOD'
+	[Match]
+	Name=w*
+
+	[Network]
+	DHCP=ipv4
+
+	[DHCPv4]
+	RouteMetric=20
+
+	[IPv6AcceptRA]
+	RouteMetric=20
+EOD
+
+	# set the hostname
+	echo "${args[hostname]}" > $MOUNTPOINT/etc/hostname
+
+	# set the system language
+	echo "LANG=${args[lang]}" > $MOUNTPOINT/etc/locale.conf
+
+	# enable the networking services
+	arch-chroot $MOUNTPOINT /bin/bash <<-EOD
+	systemctl enable systemd-networkd.service
+	systemctl enable systemd-resolved.service
+EOD
+	ln -sf /run/systemd/resolve/stub-resolv.conf $MOUNTPOINT/etc/resolv.conf
+
+	# setup the user environment.d
+	echo 'eval "export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)"' > "$MOUNTPOINT/etc/profile.d/user-environment-d.sh"
+}
+
+# vim: ft=bash
