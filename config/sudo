@@ -1,6 +1,6 @@
 config() {
-	awk '/^#/ && /wheel/ && /NOPASSWD/' $mount/etc/sudoers | cut -c3- > $mount/etc/sudoers.d/wheel
-	chmod 0750 $mount/etc/sudoers.d
+	awk '/^#/ && /wheel/ && /NOPASSWD/' $MOUNTPOINT/etc/sudoers | cut -c3- > $MOUNTPOINT/etc/sudoers.d/wheel
+	chmod 0750 $MOUNTPOINT/etc/sudoers.d
 	msg config 4 'configured sudo'
 }
 
