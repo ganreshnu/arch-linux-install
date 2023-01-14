@@ -1,3 +1,10 @@
+original() {
+	file="$(readlink -f "$1")"
+	pkgname="$(pacman -Qoq "$file")"
+	url="$(pacman -Sp "$pkgname")"
+
+	curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}"
+}
 config() {
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
 	[[ -d "$MOUNTPOINT/etc/skel/.config/bash" ]] \
@@ -11,6 +18,7 @@ config() {
 	unset prof
 EOD
 
+	original > "$MOUNTPOINT/etc/skel/.bashrc"
 	cat >> "$MOUNTPOINT/etc/skel/.bashrc" <<-'EOD'
 	for rc in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.rc; do
 		[[ -r "$rc" ]] && . "$rc"
