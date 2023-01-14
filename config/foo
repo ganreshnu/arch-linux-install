@@ -1,5 +1,0 @@
-config() {
-	msg fuck 1 "should never see this"
-}
-
-# vim: ft=bash
