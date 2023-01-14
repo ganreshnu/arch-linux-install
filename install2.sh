@@ -239,7 +239,7 @@ main() {
 		'Virtual Machine' )
 			PACKAGES+=(hyperv firewalld dosfstools 
 				"${CMDLINE[@]}" "${KERNEL[@]}")
-			format 'ext4'
+#			format 'ext4'
 			;;
 		'MacBookAir5,2' )
 #			format 'f2fs'
@@ -261,7 +261,22 @@ main() {
 	[[ $go =~ y|Y ]] && echo || return 0
 
 	msg msg 4 "installing..."
+
+	# bootstrap the install
 	pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"
+
+	# setup the hw clock
+	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
+
+	PACKAGES="$(arch-chroot $MOUNTPOINT pacman -Qq)"
+
+	local here=$(dirname "$BASH_SOURCE")
+	for f in $here/config/*; do
+		if [[ "$PACKAGES" =~ (^|[[:space:]])$(basename "$f")([[:space:]]|$) ]]; then
+			. "$f"
+			config
+		fi
+	done; unset f
 
 	return 0
 }

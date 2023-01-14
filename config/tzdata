@@ -1,0 +1,6 @@
+config() {
+	[[ "${args[timezone]}" ]] && arch-chroot $MOUNTPOINT ln -sf "/usr/share/zoneinfo/${args[timezone]}" /etc/localtime
+	msg msg 4 "set timezone to ${args[timezone]}"
+}
+
+# vim: ft=bash
