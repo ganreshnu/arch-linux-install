@@ -180,10 +180,16 @@ format() {
 		if [[ ! "$mounted" ]]; then
 			mkdir -p "$MOUNTPOINT/boot"
 			mount "$dev" "$MOUNTPOINT/boot"
+			bootctl --install "$MOUNTPOINT/boot"
 		fi
 	fi
 
 	return 0
+}
+
+confirm() {
+	read -n 1 -p "${1} (y/N)" answer
+	
 }
 
 #
@@ -225,16 +231,18 @@ main() {
 
 	local PACKAGES=(base iptables-nft reflector polkit)
 	local DOCS=(man-db man-pages texinfo)
-	local CMDLINE=(sudo bash-completion git vim)
+	local CMDLINE=(sudo bash-completion git vim openssh)
+	local KERNEL=(linux linux-firmware wireless-regdb mkinitcpio tpm2-tss)
 
 	local filesystem
 	case "${args[platform]}" in
 		'Virtual Machine' )
-			PACKAGES+=(hyperv firewalld tpm2-tss libfido2 openssh "${CMDLINE[@]}")
+			PACKAGES+=(hyperv firewalld dosfstools 
+				"${CMDLINE[@]}" "${KERNEL[@]}")
 			format 'ext4'
 			;;
 		'MacBookAir5,2' )
-			format 'f2fs'
+#			format 'f2fs'
 			echo mba
 			;;
 		* )
@@ -243,11 +251,17 @@ main() {
 			;;
 	esac
 
-	pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"
 
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
 	done
+	echo "MOUNTPOINT = $MOUNTPOINT"
+
+	read -n 1 -p "continue to install? (y/N)" go
+	[[ $go =~ y|Y ]] && echo || return 0
+
+	msg msg 4 "installing..."
+	pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"
 
 	return 0
 }
