@@ -18,7 +18,7 @@ config() {
 	unset prof
 EOD
 
-	original > "$MOUNTPOINT/etc/skel/.bashrc"
+	original "/etc/skel/.bashrc" > "$MOUNTPOINT/etc/skel/.bashrc"
 	cat >> "$MOUNTPOINT/etc/skel/.bashrc" <<-'EOD'
 	for rc in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.rc; do
 		[[ -r "$rc" ]] && . "$rc"
