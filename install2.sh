@@ -180,7 +180,7 @@ format() {
 		if [[ ! "$mounted" ]]; then
 			mkdir -p "$MOUNTPOINT/boot"
 			mount "$dev" "$MOUNTPOINT/boot"
-			bootctl --install "$MOUNTPOINT/boot"
+			bootctl --esp-path="$MOUNTPOINT/boot" install
 		fi
 	fi
 
