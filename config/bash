@@ -3,7 +3,7 @@ original() {
 	pkgname="$(pacman -Qoq "$file")"
 	url="$(pacman -Sp "$pkgname")"
 
-	curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$1"
+	curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
 }
 config() {
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
