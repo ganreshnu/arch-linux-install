@@ -20,7 +20,7 @@ EOD
 
 	haspackage "bash-completion" && arch-chroot "$MOUNTPOINT" /bin/bash <<-EOD
 	cd /etc/skel
-	ln -s .config/bash/bash_completion .bash_completion
+	ln -sf .config/bash/bash_completion .bash_completion
 EOD
 
 	msg config 4 'configured bash'
