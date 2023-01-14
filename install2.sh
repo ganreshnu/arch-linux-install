@@ -277,7 +277,7 @@ main() {
 	}
 
 	# sync pacman
-	arch-chroot "$MOUNTPOINT" pacman -Sy
+#	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	msg install 4 "installing configurations"
 	local here=$(dirname "$BASH_SOURCE")
