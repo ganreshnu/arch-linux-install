@@ -1,4 +1,5 @@
 config() {
+	msg config 4 "configuring systemd to use hostname ${args[hostname]} and lang ${args[lang]}"
 	# setup the ethernet network
 	cat > $MOUNTPOINT/etc/systemd/network/ethernet.network <<-'EOD'
 	[Match]
@@ -43,8 +44,6 @@ EOD
 
 	# setup the user environment.d
 	echo 'eval "export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)"' > "$MOUNTPOINT/etc/profile.d/user-environment-d.sh"
-
-	msg config 4 "configured systemd to use hostname ${args[hostname]} and lang ${args[lang]}"
 }
 
 # vim: ft=bash

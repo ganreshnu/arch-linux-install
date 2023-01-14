@@ -6,6 +6,8 @@ original() {
 	curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
 }
 config() {
+	msg config 4 'configuring bash'
+
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
 	[[ -d "$MOUNTPOINT/etc/skel/.config/bash" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/bash" pull \
@@ -31,7 +33,6 @@ EOD
 	ln -sf .config/bash/bash_completion .bash_completion
 EOD
 
-	msg config 4 'configured bash'
 }
 
 # vim: ft=bash

@@ -1,11 +1,10 @@
 config() {
+	msg config 4 'configuring hyperv'
 	arch-chroot "$MOUNTPOINT" /bin/bash <<-EOD
 	systemctl enable hv_fcopy_daemon.service
 	systemctl enable hv_kvp_daemon.service
 	systemctl enable hv_vss_daemon.service
 EOD
-
-	msg config 4 'configured hyperv'
 }
 
 # vim: ft=bash

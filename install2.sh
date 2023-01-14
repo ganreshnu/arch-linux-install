@@ -255,16 +255,18 @@ main() {
 	read -n 1 -p "continue to install? (y/N) " go
 	[[ $go =~ y|Y ]] && echo || return 1
 
-	msg install 4 "installing..."
+	msg install 4 "updating the pacman mirrorlist"
 	reflector --save /etc/pacman.d/mirrorlist --country US --latest 5 --protocol 'https'
 
 	# bootstrap the install
+	msg install 4 "installing the packages"
 	if ! pacstrap -iK $MOUNTPOINT "${PACKAGES[@]}"; then
 		read -n 1 -p "pacstrap failed. continue? (y/N) " go
 		[[ $go =~ y|Y ]] && echo || return 1
 	fi
 
 	# setup the hw clock
+	msg install 4 "setting up the hardware clock"
 	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
 
 
@@ -276,6 +278,7 @@ main() {
 	# sync pacman
 #	arch-chroot "$MOUNTPOINT" pacman -Sy
 
+	msg install 4 "installing configurations"
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
 		if haspackage $(basename "$f"); then

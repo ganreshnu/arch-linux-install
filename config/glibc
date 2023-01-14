@@ -1,8 +1,8 @@
 config() {
+	msg config 4 "configuring glibc to install locale ${args[lang]}"
+
 	sed -i "/${args[lang]}/s/^#//g" $MOUNTPOINT/etc/locale.gen
 	arch-chroot $MOUNTPOINT locale-gen
-
-	msg config 4 "configured glibc to install locale ${args[lang]}"
 }
 
 # vim: ft=bash

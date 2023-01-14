@@ -1,7 +1,6 @@
 config() {
+	msg config 4 "configuring iwd"
 	arch-chroot $MOUNTPOINT systemctl enable iwd.service
-
-	msg config 4 "configured iwd"
 }
 
 # vim: ft=bash

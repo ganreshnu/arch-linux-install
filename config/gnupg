@@ -1,4 +1,6 @@
 config() {
+	msg config 4 'configuring gnupg'
+
 	[[ -d "$MOUNTPOINT/etc/skel/.config/gnupg" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/gnupg" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg
@@ -6,8 +8,6 @@ config() {
 
 	[[ ! -d "$MOUNTPOINT/etc/skel/.config/environment.d" ]] && mkdir -p "$MOUNTPOINT/etc/skel/.config/environment.d"
 	echo 'GNUPGHOME=${XDG_CONFIG_HOME:-$HOME/.config}/gnupg' > "$MOUNTPOINT/etc/skel/.config/environment.d/20-gnupg.conf"
-
-	msg config 4 'configured gnupg'
 }
 
 # vim: ft=bash

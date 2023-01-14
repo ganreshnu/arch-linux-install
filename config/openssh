@@ -1,10 +1,9 @@
 config() {
+	msg config 4 'configuring openssh'
 	[[ -d "$MOUNTPOINT/etc/skel/.ssh" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.ssh" pull \
 		|| git -C "$MOUNTPOINT/etc/skel" clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 	ssh-keyscan github.com > "$MOUNTPOINT/etc/skel/.ssh/known_hosts"
-
-	msg config 4 'configured openssh'
 }
 
 # vim: ft=bash

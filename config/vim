@@ -1,10 +1,9 @@
 config() {
+	msg config 4 'configuring vim'
 	mkdir -p "$MOUNTPOINT/etc/skel/.config"
 	[[ -d "$MOUNTPOINT/etc/skel/.config/vim" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/vim" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet --recurse-submodules https://github.com/ganreshnu/config-vim.git vim
-
-	msg config 4 'configured vim'
 }
 
 # vim: ft=bash

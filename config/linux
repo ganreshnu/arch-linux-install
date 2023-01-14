@@ -1,4 +1,5 @@
 config() {
+	msg config 4 'configuring linux'
 #	local microcode="" initrd=""
 #	for mc in $mount/boot/*-ucode.img; do
 #		microcode="$microcode --microcode /boot/$(basename $mc)"
@@ -38,7 +39,6 @@ config() {
 #		StandardOutput=journal
 #		StandardError=journal+console
 #EOD
-	msg config 4 'configured linux'
 }
 
 # vim: ft=bash
