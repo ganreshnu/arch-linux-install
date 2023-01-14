@@ -1,5 +1,5 @@
 config() {
-	arch-chroot $mount /bin/bash <<-EOD
+	arch-chroot "$MOUNTPOINT" /bin/bash <<-EOD
 	systemctl enable hv_fcopy_daemon.service
 	systemctl enable hv_kvp_daemon.service
 	systemctl enable hv_vss_daemon.service
