@@ -1,0 +1,8 @@
+config() {
+	# install the readline config
+	git -C $MOUNTPOINT/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-readline.git readline
+	
+	msg config 4 'configured readline'
+}
+
+# vim: ft=bash

@@ -267,10 +267,12 @@ main() {
 	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
 
 	PACKAGES="$(arch-chroot $MOUNTPOINT pacman -Qq)"
-
+	haspackage() {
+		[[ "$PACKAGES" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
+	}
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
-		if [[ "$PACKAGES" =~ (^|[[:space:]])$(basename "$f")([[:space:]]|$) ]]; then
+		if haspackage $(basename "$f"); then
 			. "$f"
 			config
 		fi

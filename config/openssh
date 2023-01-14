@@ -1,0 +1,8 @@
+config() {
+	git -C $MOUNTPOINT/etc/skel clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
+	ssh-keyscan github.com > $MOUNTPOINT/etc/skel/.ssh/known_hosts
+
+	msg config 4 'configured openssh'
+}
+
+# vim: ft=bash
