@@ -258,12 +258,15 @@ main() {
 	echo "MOUNTPOINT = $MOUNTPOINT"
 
 	read -n 1 -p "continue to install? (y/N)" go
-	[[ $go =~ y|Y ]] && echo || return 0
+	[[ $go =~ y|Y ]] && echo || return 1
 
 	msg msg 4 "installing..."
 
 	# bootstrap the install
-	pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"
+	if ! pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"; then
+		read -n 1 -p "pacstrap failed. continue? (y/N)" go
+		[[ $go =~ y|Y ]] && echo || return 1
+	fi
 
 	# setup the hw clock
 	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
