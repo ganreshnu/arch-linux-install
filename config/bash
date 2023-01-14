@@ -1,23 +1,24 @@
 config() {
-	msg 'test' 3 "mount: $MOUNTPOINT"
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
-	git -C $MOUNTPOINT/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
+	[[ -d "$MOUNTPOINT/etc/skel/.config/bash" ]] \
+		&& git -C "$MOUNTPOINT/etc/skel/.config/bash" pull \
+		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet https://github.com/ganreshnu/config-bash.git bash
 
-	cat > $MOUNTPOINT/etc/profile.d/bash-config-profiles.sh <<-'EOD'
+	cat > "$MOUNTPOINT/etc/profile.d/bash-config-profiles.sh" <<-'EOD'
 	for prof in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.profile; do
 		[[ -r "$prof" ]] && . "$prof"
 	done
 	unset prof
 EOD
 
-	cat >> $MOUNTPOINT/etc/skel/.bashrc <<-'EOD'
+	cat >> "$MOUNTPOINT/etc/skel/.bashrc" <<-'EOD'
 	for rc in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.rc; do
 		[[ -r "$rc" ]] && . "$rc"
 	done
 	unset rc
 EOD
 
-	haspackage "bash-completion" && arch-chroot $MOUNTPOINT /bin/bash <<-EOD
+	haspackage "bash-completion" && arch-chroot "$MOUNTPOINT" /bin/bash <<-EOD
 	cd /etc/skel
 	ln -s .config/bash/bash_completion .bash_completion
 EOD
