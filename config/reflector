@@ -1,5 +1,4 @@
 config() {
-	arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 5 --protocol 'https'
 	cat > $MOUNTPOINT/etc/xdg/reflector/reflector.conf <<-EOD
 	--save /etc/pacman.d/mirrorlist
 	--country US

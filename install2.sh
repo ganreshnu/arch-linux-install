@@ -258,7 +258,7 @@ main() {
 	msg install 4 "installing..."
 
 	# bootstrap the install
-	if ! pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"; then
+	if ! pacstrap -iK $MOUNTPOINT "${PACKAGES[@]}"; then
 		read -n 1 -p "pacstrap failed. continue? (y/N) " go
 		[[ $go =~ y|Y ]] && echo || return 1
 	fi
@@ -266,10 +266,18 @@ main() {
 	# setup the hw clock
 	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
 
+
 	PACKAGES="$(arch-chroot $MOUNTPOINT pacman -Qq)"
 	haspackage() {
 		[[ "$PACKAGES" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
+
+	# generate the mirrorlist
+	haspackage 'reflector' && arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 5 --protocol 'https'
+
+	# sync pacman
+	arch-chroot "$MOUNTPOINT" pacman -Sy
+
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
 		if haspackage $(basename "$f"); then

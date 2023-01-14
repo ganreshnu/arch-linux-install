@@ -1,4 +1,5 @@
 original() {
+	pacman -Sy
 	file="$(readlink -f "$1")"
 	pkgname="$(pacman -Qoq "$file")"
 	url="$(pacman -Sp "$pkgname")"
@@ -19,7 +20,7 @@ config() {
 	unset prof
 EOD
 
-#	original "/etc/skel/.bashrc"
+	original "/etc/skel/.bashrc"
 	cat >> "$MOUNTPOINT/etc/skel/.bashrc" <<-'EOD'
 	for rc in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.rc; do
 		[[ -r "$rc" ]] && . "$rc"
