@@ -1,0 +1,6 @@
+config() {
+	arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 3 --delay 0.25
+	msg config 4 'configured reflector'
+}
+
+# vim: ft=bash

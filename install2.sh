@@ -224,7 +224,7 @@ main() {
 	# immediately set the host time
 	timedatectl set-ntp true 2>/dev/null || true
 
-	local PACKAGES=(base iptables-nft reflector polkit)
+	local PACKAGES=(base iptables-nft reflector rsync polkit)
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim openssh)
 	local KERNEL=(linux linux-firmware wireless-regdb mkinitcpio tpm2-tss)
