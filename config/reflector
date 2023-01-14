@@ -1,5 +1,12 @@
 config() {
-	arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 3 --delay 0.25
+	arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 5 --protocol 'https'
+	cat > $MOUNTPOINT/etc/xdg/reflector/reflector.conf <<-EOD
+	--save /etc/pacman.d/mirrorlist
+	--country US
+	--latest 5
+	--protocol https
+EOD
+	arch-chroot $MOUNTPOINT systemctl enable reflector.timer
 	msg config 4 'configured reflector'
 }
 
