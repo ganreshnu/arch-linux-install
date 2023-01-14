@@ -227,7 +227,7 @@ main() {
 	local PACKAGES=(base iptables-nft reflector polkit)
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim openssh)
-	local KERNEL=(linux linux-firmware wireless-regdb mkinitcpio tpm2-tss)
+	local KERNEL=(linux mkinitcpio tpm2-tss)
 
 	local filesystem
 	case "${args[platform]}" in

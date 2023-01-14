@@ -14,11 +14,14 @@ config() {
 #	[[ "$swap" ]] && resume="resume=PARTUUID=$uuid_swap"
 	cat > "$MOUNTPOINT/boot/loader/entries/archlinux.conf" <<-EOD
 		title    Arch Linux
+		sort-key 01
       linux    /vmlinuz-linux
 		initrd   /initramfs-linux.img
+		options  quiet
 EOD
 	cat > "$MOUNTPOINT/boot/loader/entries/fallback.conf" <<-EOD
 		title		Arch Linux (fallback)
+		sort-key 02
 		linux		/vmlinuz-linux
 		initrd	/initramfs-linux-fallback.img
 EOD
