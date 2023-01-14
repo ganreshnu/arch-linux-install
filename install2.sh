@@ -256,6 +256,7 @@ main() {
 	[[ $go =~ y|Y ]] && echo || return 1
 
 	msg install 4 "installing..."
+	reflector --save /etc/pacman.d/mirrorlist --country US --latest 5 --protocol 'https'
 
 	# bootstrap the install
 	if ! pacstrap -iK $MOUNTPOINT "${PACKAGES[@]}"; then
@@ -272,11 +273,8 @@ main() {
 		[[ "$PACKAGES" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
 
-	# generate the mirrorlist
-	haspackage 'reflector' && arch-chroot $MOUNTPOINT reflector --save /etc/pacman.d/mirrorlist --country us --latest 5 --protocol 'https'
-
 	# sync pacman
-	arch-chroot "$MOUNTPOINT" pacman -Sy
+#	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
