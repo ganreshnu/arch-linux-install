@@ -279,6 +279,13 @@ main() {
 	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	msg install 4 "installing configurations"
+	original() {
+		file="$(readlink -f "$1")"
+		pkgname="$(pacman -Qoq "$file")"
+		url="$(pacman -Sp "$pkgname")"
+
+		curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
+	}
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
 		if haspackage $(basename "$f"); then

@@ -1,5 +1,8 @@
 config() {
 	msg config 4 'configuring linux'
+	original '/etc/mkinitcpio.conf'
+	echo 'HOOKS=(autodetect block filesystems modconf systemd)' >> "$MOUNTPOINT/etc/mkinitcpio.conf"
+	arch-chroot "$MOUNTPOINT" mkinitcpio -P
 #	local microcode="" initrd=""
 #	for mc in $mount/boot/*-ucode.img; do
 #		microcode="$microcode --microcode /boot/$(basename $mc)"
@@ -9,14 +12,16 @@ config() {
 #
 #	local resume=""
 #	[[ "$swap" ]] && resume="resume=PARTUUID=$uuid_swap"
-#	cat > $mount/boot/loader/entries/fallback.conf <<-EOD
-#		title		Arch Linux (fallback)
-#		linux		/vmlinuz-linux
-#		$initrd
-#		initrd	/initramfs-linux.img
-#		options	root=PARTUUID=$uuid_root $resume
-#		options	rw quiet consoleblank=60 $kernel_options
-#EOD
+	cat > "$MOUNTPOINT/boot/loader/entries/archlinux.conf" <<-EOD
+		title    Arch Linux
+      linux    /vmlinuz-linux
+		initrd   /initramfs-linux.img
+EOD
+	cat > "$MOUNTPOINT/boot/loader/entries/fallback.conf" <<-EOD
+		title		Arch Linux (fallback)
+		linux		/vmlinuz-linux
+		initrd	/initramfs-linux-fallback.img
+EOD
 #
 #	local opts=""
 #	for opt in $kernel_options; do
