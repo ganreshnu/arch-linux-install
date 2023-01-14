@@ -38,7 +38,7 @@ config() {
 #		StandardOutput=journal
 #		StandardError=journal+console
 #EOD
-	msg msg 4 'configured linux'
+	msg config 4 'configured linux'
 }
 
 # vim: ft=bash

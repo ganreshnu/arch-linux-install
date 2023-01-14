@@ -187,11 +187,6 @@ format() {
 	return 0
 }
 
-confirm() {
-	read -n 1 -p "${1} (y/N)" answer
-	
-}
-
 #
 # define the main encapsulation function
 #
@@ -260,7 +255,7 @@ main() {
 	read -n 1 -p "continue to install? (y/N) " go
 	[[ $go =~ y|Y ]] && echo || return 1
 
-	msg msg 4 "installing..."
+	msg install 4 "installing..."
 
 	# bootstrap the install
 	if ! pacstrap -iKM $MOUNTPOINT "${PACKAGES[@]}"; then

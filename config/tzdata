@@ -1,6 +1,6 @@
 config() {
 	[[ "${args[timezone]}" ]] && arch-chroot $MOUNTPOINT ln -sf "/usr/share/zoneinfo/${args[timezone]}" /etc/localtime
-	msg msg 4 "configured tzdata to use timezone ${args[timezone]}"
+	msg config 4 "configured tzdata to use timezone ${args[timezone]}"
 }
 
 # vim: ft=bash

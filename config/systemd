@@ -44,7 +44,7 @@ EOD
 	# setup the user environment.d
 	echo 'eval "export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)"' > "$MOUNTPOINT/etc/profile.d/user-environment-d.sh"
 
-	msg msg 4 "configured systemd to use hostname ${args[hostname]} and lang ${args[lang]}"
+	msg config 4 "configured systemd to use hostname ${args[hostname]} and lang ${args[lang]}"
 }
 
 # vim: ft=bash
