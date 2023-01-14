@@ -1,4 +1,5 @@
 config() {
+	msg 'test' 3 "mount: $MOUNTPOINT"
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
 	git -C $MOUNTPOINT/etc/skel/.config clone --quiet https://github.com/ganreshnu/config-bash.git bash
 
