@@ -281,10 +281,10 @@ main() {
 	msg install 4 "installing configurations"
 	original() {
 		file="$(readlink -f "$1")"
-		pkgname="$(pacman -Qoq "$file")"
-		url="$(pacman -Sp "$pkgname")"
+		pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
+		url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
 
-		curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
+		arch-chroot "$MOUNTPOINT" curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
 	}
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
