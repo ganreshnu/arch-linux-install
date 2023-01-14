@@ -257,7 +257,6 @@ main() {
 
 	msg install 4 "updating the pacman mirrorlist"
 	reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
-	pacman -Sy
 
 	# bootstrap the install
 	msg install 4 "installing the packages"
@@ -277,7 +276,7 @@ main() {
 	}
 
 	# sync pacman
-#	arch-chroot "$MOUNTPOINT" pacman -Sy
+	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	msg install 4 "installing configurations"
 	local here=$(dirname "$BASH_SOURCE")
