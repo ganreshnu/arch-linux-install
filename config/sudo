@@ -1,5 +1,4 @@
 config() {
-	msg config 4 'configuring sudo'
 	awk '/wheel/ && /NOPASSWD/' $MOUNTPOINT/etc/sudoers | cut -c3- > $MOUNTPOINT/etc/sudoers.d/wheel
 	chmod 0750 $MOUNTPOINT/etc/sudoers.d
 }

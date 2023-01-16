@@ -1,6 +1,4 @@
 config() {
-	msg config 4 'configuring gnupg'
-
 	[[ -d "$MOUNTPOINT/etc/skel/.config/gnupg" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/gnupg" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet https://github.com/ganreshnu/config-gnupg.git gnupg

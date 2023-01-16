@@ -1,5 +1,4 @@
 config() {
-	msg config 4 'configuring readline'
 	# install the readline config
 	[[ -d "$MOUNTPOINT/etc/skel/.config/readline" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/readline" pull \

@@ -1,17 +1,7 @@
 config() {
-	msg config 4 'configuring linux'
 	original '/etc/mkinitcpio.conf'
 	echo 'HOOKS=(autodetect block filesystems modconf systemd)' >> "$MOUNTPOINT/etc/mkinitcpio.conf"
 	arch-chroot "$MOUNTPOINT" mkinitcpio -P
-#	local microcode="" initrd=""
-#	for mc in $mount/boot/*-ucode.img; do
-#		microcode="$microcode --microcode /boot/$(basename $mc)"
-#		initrd="${initrd}initrd /$(basename $mc)
-#	"
-#	done
-#
-#	local resume=""
-#	[[ "$swap" ]] && resume="resume=PARTUUID=$uuid_swap"
 	cat > "$MOUNTPOINT/boot/loader/entries/archlinux.conf" <<-EOD
 		title    Arch Linux
 		sort-key 01
@@ -25,28 +15,6 @@ EOD
 		linux		/vmlinuz-linux
 		initrd	/initramfs-linux-fallback.img
 EOD
-#
-#	local opts=""
-#	for opt in $kernel_options; do
-#		opts="$opts --opt $opt"
-#	done
-#			
-#	cmdline=""
-#	[[ "$swap" ]] && cmdline="resume=PARTUUID=$uuid_swap"
-#	cat > $mount/etc/systemd/system/make-unified-init.service <<-EOD
-#		[Unit]
-#		Description=Make unified kernel image
-#		After=local-fs.target
-#		
-#		[Service]
-#		Type=oneshot
-#		ExecStartPre=/bin/bash -c 'echo "MODULES=($modules)\\nHOOKS=(autodetect block modconf systemd)" > /tmp/make-unified-init.conf'
-#		ExecStartPre=/bin/bash -c 'echo "$cmdline" > /tmp/make-unified-init.cmdline'
-#		ExecStart=/usr/bin/mkinitcpio --config /tmp/make-unified-init.conf --cmdline /tmp/make-unified-init.cmdline --uki /boot/EFI/Linux/archlinux-systemd.efi $microcode
-#		ExecStartPost=/bin/bash -c 'rm /tmp/make-unified-init.*'
-#		StandardOutput=journal
-#		StandardError=journal+console
-#EOD
 }
 
 # vim: ft=bash

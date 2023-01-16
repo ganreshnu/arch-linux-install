@@ -224,7 +224,7 @@ main() {
 	# immediately set the host time
 	timedatectl set-ntp true 2>/dev/null || true
 
-	local PACKAGES=(base iptables-nft reflector polkit)
+	local PACKAGES=(base iptables-nft polkit reflector)
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim libfido2 openssh)
 	local KERNEL=(linux wireless-regdb mkinitcpio tpm2-tss)
@@ -248,7 +248,7 @@ main() {
 			;;
 		* )
 #			format 'fat'
-			echo unk
+			msg error 1 "unknown platform ${args[platform]}"
 			;;
 	esac
 
@@ -271,22 +271,18 @@ main() {
 		[[ $go =~ y|Y ]] && echo || return 1
 	fi
 
-	# setup the hw clock
-	msg install 4 "setting up the hardware clock"
-	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
-
+	# sync pacman
+	msg install 4 "syncing pacman"
+	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	PACKAGES="$(arch-chroot $MOUNTPOINT pacman -Qq)"
 	haspackage() {
 		[[ "$PACKAGES" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
 
-	# sync pacman
-	arch-chroot "$MOUNTPOINT" pacman -Sy
-
 	msg install 4 "installing configurations"
 	original() {
-		file="$(readlink -f "$1")"
+		file="$(arch-chroot "$MOUNTPOINT" readlink -f "$1")"
 		pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
 		url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
 
@@ -295,6 +291,7 @@ main() {
 	local here=$(dirname "$BASH_SOURCE")
 	for f in $here/config/*; do
 		if haspackage $(basename "$f"); then
+			msg config 4 "configuring $(basename "$f")"
 			. "$f"
 			config
 		fi

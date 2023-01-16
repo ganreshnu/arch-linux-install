@@ -1,0 +1,6 @@
+config() {
+	# setup the hw clock
+	arch-chroot $MOUNTPOINT hwclock --systohc --update-drift
+}
+
+# vim: ft=bash

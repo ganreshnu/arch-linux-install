@@ -1,6 +1,4 @@
 config() {
-	msg config 4 'configuring filesystem'
-
 	mkdir -p "$MOUNTPOINT/etc/skel/.config/environment.d"
 	mkdir -p "$MOUNTPOINT/etc/skel/.local/"{"state","share","bin"}
 	echo 'PATH="$HOME/.local/bin:$PATH' > "$MOUNTPOINT/etc/skel/.config/environment.d/50-local-bin.conf"

@@ -1,5 +1,4 @@
 config() {
-	msg config 4 'configuring polkit'
 	cat > "$MOUNTPOINT/etc/polkit-1/rules.d/50-nopasswd_global.rules" <<-'EOD'
 	/*
 	 * Allow members of the wheel group to execute any actions

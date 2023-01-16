@@ -1,5 +1,4 @@
 config() {
-	msg config 4 'configuring reflector'
 	cat > $MOUNTPOINT/etc/xdg/reflector/reflector.conf <<-EOD
 	--save /etc/pacman.d/mirrorlist
 	--country US

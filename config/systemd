@@ -1,5 +1,4 @@
 config() {
-	msg config 4 "configuring systemd to use hostname ${args[hostname]} and lang ${args[lang]}"
 	# setup the ethernet network
 	cat > $MOUNTPOINT/etc/systemd/network/ethernet.network <<-'EOD'
 	[Match]

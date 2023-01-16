@@ -1,5 +1,4 @@
 config() {
-	msg config 4 "configuring tzdata to use timezone ${args[timezone]}"
 	[[ "${args[timezone]}" ]] && arch-chroot $MOUNTPOINT ln -sf "/usr/share/zoneinfo/${args[timezone]}" /etc/localtime
 }
 

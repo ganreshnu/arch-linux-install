@@ -1,6 +1,4 @@
 config() {
-	msg config 4 'configuring bash'
-
 	mkdir -p "$MOUNTPOINT/etc/skel/.config" "$MOUNTPOINT/etc/skel/.local/state" "$MOUNTPOINT/etc/skel/.local/share"
 	[[ -d "$MOUNTPOINT/etc/skel/.config/bash" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/bash" pull \

@@ -1,5 +1,4 @@
 config() {
-	msg config 4 'configuring firewalld'
 	arch-chroot $MOUNTPOINT systemctl enable firewalld.service
 }
 
