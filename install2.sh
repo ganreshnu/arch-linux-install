@@ -63,7 +63,7 @@ set -euo pipefail
 #
 usage() {
 	cat <<EOD
-Usage: $(basename "$BASH_SOURCE") [OPTIONS] [PLATFORM]
+Usage: $(basename "$BASH_SOURCE") [OPTIONS] [DIRECTORY]
 
 Options:
   --help                         Show this message and exit.
@@ -226,22 +226,28 @@ main() {
 
 	local PACKAGES=(base iptables-nft reflector polkit)
 	local DOCS=(man-db man-pages texinfo)
-	local CMDLINE=(sudo bash-completion git vim openssh)
-	local KERNEL=(linux mkinitcpio tpm2-tss)
+	local CMDLINE=(sudo bash-completion git vim libfido2 openssh)
+	local KERNEL=(linux wireless-regdb mkinitcpio tpm2-tss)
 
 	local filesystem
 	case "${args[platform]}" in
 		'Virtual Machine' )
+			msg install 4 'installing for Hyper-V'
 			PACKAGES+=(hyperv firewalld dosfstools 
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 #			format 'ext4'
 			;;
 		'MacBookAir5,2' )
+			msg install 4 'installing for MBA'
 #			format 'f2fs'
 			echo mba
 			;;
+		'WSL' )
+			PACKAGES+=("${CMDLINE[@]}" "${DOCS[@]}")
+			msg install 4 'installing for WSL'
+			;;
 		* )
-			format 'fat'
+#			format 'fat'
 			echo unk
 			;;
 	esac
