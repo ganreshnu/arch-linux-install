@@ -3,6 +3,8 @@ config() {
 	[[ -d "$MOUNTPOINT/etc/skel/.config/vim" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/vim" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet --recurse-submodules https://github.com/ganreshnu/config-vim.git vim
+
+	return 0
 }
 
 # vim: ft=bash

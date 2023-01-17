@@ -3,6 +3,8 @@ config() {
 	[[ -d "$MOUNTPOINT/etc/skel/.config/readline" ]] \
 		&& git -C "$MOUNTPOINT/etc/skel/.config/readline" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet https://github.com/ganreshnu/config-readline.git readline
+
+	return 0
 }
 
 # vim: ft=bash

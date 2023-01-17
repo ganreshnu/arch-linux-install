@@ -24,6 +24,7 @@ EOD
 	ln -sf .config/bash/bash_completion .bash_completion
 EOD
 
+	return 0
 }
 
 # vim: ft=bash

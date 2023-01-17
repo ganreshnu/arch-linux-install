@@ -11,6 +11,8 @@ config() {
 		return polkit.Result.NOT_HANDLED
 	});
 EOD
+
+	return 0
 }
 
 # vim: ft=bash

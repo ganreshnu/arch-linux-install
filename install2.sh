@@ -74,6 +74,7 @@ Options:
 
   --platform DIRECTORY           The target platform from which to derive
                                  configuration.
+  --mirrorlist                   Generate a mirrorlist.
 
 Install an Arch Linux Distribution.
 EOD
@@ -84,6 +85,7 @@ declare -A args=(
 	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
 	[platform]="$([[ -f /sys/class/dmi/id/product_name ]] && cat /sys/class/dmi/id/product_name)"
+	[mirrorlist]=no
 )
 
 parseargs() {
@@ -117,6 +119,10 @@ parseargs() {
 				--platform )
 					getvalue platform "$@"
 					shift $sc
+					;;
+				--mirrorlist )
+					args[mirrorlist]=yes
+					shift
 					;;
 				--help )
 					showusage=0
@@ -187,18 +193,54 @@ format() {
 	return 0
 }
 
+configure() {
+	packages="$(arch-chroot $MOUNTPOINT pacman -Qq)"
+	haspackage() {
+		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
+	}
+
+	msg install 4 "installing configurations"
+	original() {
+		local file="$(arch-chroot "$MOUNTPOINT" readlink -f "$1")"
+		local pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
+		local url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
+
+		arch-chroot "$MOUNTPOINT" curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
+	}
+	local here="$(dirname "$BASH_SOURCE")"
+	for f in "$here/config/"*; do
+		if haspackage "$(basename "$f")"; then
+			msg config 4 "configuring $(basename "$f")"
+			. "$f"
+			config
+		fi
+
+	done; unset f
+}
+
 #
 # define the main encapsulation function
 #
 main() {
+	
+	local answer=
+	confirm() {
+		read -p "$1 [Y/n] " answer
+		[[ "$answer" =~ y|Y || "$answer" == '' ]] \
+			&& answer='y' || answer='n'
+	}
+
 	#
 	# parse the arguments
 	#
 	parseargs "$@" && set -- ${args[_]} && unset args[_]
 	local showusage=$1; shift
 
-	local MOUNTPOINT=''
-	[[ $# -gt 0 && "$1" ]] && MOUNTPOINT="$1" || MOUNTPOINT="/mnt"
+	local MOUNTPOINT='/mnt'
+	if [[ $# -gt 0 && "$1" ]]; then
+		MOUNTPOINT="$1"
+		shift
+	fi
 
 	#
 	# argument type validation goes here
@@ -224,78 +266,107 @@ main() {
 	# immediately set the host time
 	timedatectl set-ntp true 2>/dev/null || true
 
-	local PACKAGES=(base iptables-nft polkit reflector)
+	local BASE=(base iptables-nft polkit)
+	local PACKAGES=()
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim libfido2 openssh)
 	local KERNEL=(linux wireless-regdb mkinitcpio tpm2-tss)
 
-	local filesystem
-	case "${args[platform]}" in
-		'Virtual Machine' )
-			msg install 4 'installing for Hyper-V'
-			PACKAGES+=(hyperv firewalld dosfstools 
-				"${CMDLINE[@]}" "${KERNEL[@]}")
-#			format 'ext4'
-			;;
-		'MacBookAir5,2' )
-			msg install 4 'installing for MBA'
-#			format 'f2fs'
-			echo mba
-			;;
-		'WSL' )
-			PACKAGES+=("${CMDLINE[@]}" "${DOCS[@]}")
-			msg install 4 'installing for WSL'
-			;;
-		* )
-#			format 'fat'
-			msg error 1 "unknown platform ${args[platform]}"
-			;;
-	esac
 
-
+	# show configuration and prompt to continue
 	for key in "${!args[@]}"; do
 		printf '%s = %s\n' "$key" "${args[$key]}"
 	done
 	echo "MOUNTPOINT = $MOUNTPOINT"
+	confirm "continue to install?"
+	[[ "$answer" != 'y' ]] && return 2
 
-	read -n 1 -p "continue to install? (y/N) " go
-	[[ $go =~ y|Y ]] && echo || return 1
-
-	msg install 4 "updating the pacman mirrorlist"
-	reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
+	# update the mirrorlist
+	if [[ "${args[mirrorlist]}" == yes ]]; then
+		msg install 4 "updating the pacman mirrorlist"
+		reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
+	fi
 
 	# bootstrap the install
-	msg install 4 "installing the packages"
-	if ! pacstrap -iK $MOUNTPOINT "${PACKAGES[@]}"; then
-		read -n 1 -p "pacstrap failed. continue? (y/N) " go
-		[[ $go =~ y|Y ]] && echo || return 1
+	msg install 4 "installing the base system"
+	if [[ -x "$MOUNTPOINT/usr/bin/pacman" ]]; then
+		confirm 'base seems installed... reinstall?'
 	fi
+	[[ "$answer" == 'y' ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
 
 	# sync pacman
 	msg install 4 "syncing pacman"
 	arch-chroot "$MOUNTPOINT" pacman -Sy
 
-	PACKAGES="$(arch-chroot $MOUNTPOINT pacman -Qq)"
-	haspackage() {
-		[[ "$PACKAGES" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
-	}
+	configure
 
-	msg install 4 "installing configurations"
-	original() {
-		file="$(arch-chroot "$MOUNTPOINT" readlink -f "$1")"
-		pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
-		url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
+	case "${args[platform]}" in
+		'Virtual Machine' )
+			PACKAGES+=(hyperv firewalld dosfstools reflector btrfs-progs
+				"${CMDLINE[@]}" "${KERNEL[@]}")
 
-		arch-chroot "$MOUNTPOINT" curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
-	}
-	local here=$(dirname "$BASH_SOURCE")
-	for f in $here/config/*; do
-		if haspackage $(basename "$f"); then
-			msg config 4 "configuring $(basename "$f")"
-			. "$f"
-			config
-		fi
-	done; unset f
+			# setup the ethernet network
+			cat > $MOUNTPOINT/etc/systemd/network/default.network <<-'EOD'
+			[Match]
+			Name=eth0
+
+			[Network]
+			DHCP=yes
+
+			[DHCPv4]
+			RouteMetric=20
+
+			[IPv6AcceptRA]
+			RouteMetric=10
+EOD
+			;;
+		'MacBookAir5,2' )
+			PACKAGES+=(reflector firewalld dosfstools btrfs-progs
+				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}")
+
+			# setup the wireless network
+			cat > $MOUNTPOINT/etc/systemd/network/default.network <<-'EOD'
+			[Match]
+			Name=wlan0
+
+			[Network]
+			DHCP=yes
+
+			[DHCPv4]
+			RouteMetric=20
+
+			[IPv6AcceptRA]
+			RouteMetric=10
+EOD
+			;;
+		'WSL' )
+			PACKAGES+=(reflector btrfs-progs arch-install-scripts
+				"${CMDLINE[@]}" "${DOCS[@]}")
+
+			cat > "$MOUNTPOINT/etc/wsl.conf" <<-'EOD'
+			[boot]
+			systemd=true
+EOD
+			;;
+		* )
+#			format 'fat'
+			msg error 1 "unknown platform ${args[platform]}"
+			return 3
+			;;
+	esac
+
+	msg install 4 "installing additional packages for ${args[platform]}"
+	arch-chroot $MOUNTPOINT pacman -S --needed "${PACKAGES[@]}"
+
+	configure
+
+	msg install 4 'clearing package cache'
+	yes | arch-chroot "$MOUNTPOINT" pacman -Scc || true
+
+	msg install 4 'removing socket files'
+	rm -f "$MOUNTPOINT/etc/pacman.d/gnupg/S.gpg-agent"*
+
+	msg install 1 'do not forget to add a user!'
 
 	return 0
 }

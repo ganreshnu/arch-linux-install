@@ -4,6 +4,8 @@ config() {
 	systemctl enable hv_kvp_daemon.service
 	systemctl enable hv_vss_daemon.service
 EOD
+
+	return 0
 }
 
 # vim: ft=bash

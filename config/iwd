@@ -1,5 +1,7 @@
 config() {
 	arch-chroot $MOUNTPOINT systemctl enable iwd.service
+
+	return 0
 }
 
 # vim: ft=bash

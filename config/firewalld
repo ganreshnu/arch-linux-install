@@ -1,5 +1,7 @@
 config() {
 	arch-chroot $MOUNTPOINT systemctl enable firewalld.service
+
+	return 0
 }
 
 # vim: ft=bash

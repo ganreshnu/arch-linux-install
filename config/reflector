@@ -6,6 +6,8 @@ config() {
 	--protocol https
 EOD
 	arch-chroot $MOUNTPOINT systemctl enable reflector.timer
+
+	return 0
 }
 
 # vim: ft=bash

@@ -6,6 +6,8 @@ config() {
 
 	[[ ! -d "$MOUNTPOINT/etc/skel/.config/environment.d" ]] && mkdir -p "$MOUNTPOINT/etc/skel/.config/environment.d"
 	echo 'GNUPGHOME=${XDG_CONFIG_HOME:-$HOME/.config}/gnupg' > "$MOUNTPOINT/etc/skel/.config/environment.d/20-gnupg.conf"
+
+	return 0
 }
 
 # vim: ft=bash

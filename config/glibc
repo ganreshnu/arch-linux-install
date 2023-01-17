@@ -1,6 +1,8 @@
 config() {
 	sed -i "/${args[lang]}/s/^#//g" $MOUNTPOINT/etc/locale.gen
 	arch-chroot $MOUNTPOINT locale-gen
+	
+	return 0
 }
 
 # vim: ft=bash
