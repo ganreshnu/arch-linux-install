@@ -194,7 +194,7 @@ format() {
 }
 
 configure() {
-	packages="$(arch-chroot $MOUNTPOINT pacman -Qq)"
+	packages=( $@ )
 	haspackage() {
 		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
@@ -216,6 +216,20 @@ configure() {
 		fi
 
 	done; unset f
+}
+
+mkfstab() {
+	local mountpoint="$@"
+	local mounts=$(findmnt --submounts --nofsroot --noheadings --output SOURCE,TARGET,FSTYPE,OPTIONS,FSROOT --canonicalize --evaluate --raw --notruncate $mountpoint)
+	echo "$mounts" | while read -r src target fstype opts fsroot; do
+		target="${target#$mountpoint}"
+		printf '%s %s %s %s %i %i\n' \
+			"$(blkid -o value -s UUID "$src")" \
+			"$target" \
+			"$fstype" \
+			"$opts" \
+			0 0
+	done
 }
 
 #
@@ -298,7 +312,7 @@ main() {
 	msg install 4 "syncing pacman"
 	arch-chroot "$MOUNTPOINT" pacman -Sy
 
-	configure
+	configure glibc
 
 	case "${args[platform]}" in
 		'Virtual Machine' )
@@ -306,7 +320,7 @@ main() {
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the ethernet network
-			cat > $MOUNTPOINT/etc/systemd/network/default.network <<-'EOD'
+			cat > "$MOUNTPOINT/etc/systemd/network/default.network" <<-'EOD'
 			[Match]
 			Name=eth0
 
@@ -321,6 +335,8 @@ main() {
 EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
+#			original /etc/fstab
+
 			;;
 		'MacBookAir5,2' )
 			PACKAGES+=(reflector dosfstools btrfs-progs
@@ -328,7 +344,7 @@ EOD
 				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}")
 
 			# setup the wireless network
-			cat > $MOUNTPOINT/etc/systemd/network/default.network <<-'EOD'
+			cat > "$MOUNTPOINT/etc/systemd/network/default.network" <<-'EOD'
 			[Match]
 			Name=wlan0
 
@@ -361,9 +377,9 @@ EOD
 	esac
 
 	msg install 4 "installing additional packages for ${args[platform]}"
-	arch-chroot $MOUNTPOINT pacman -S --needed "${PACKAGES[@]}"
+	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
 
-	configure
+	configure ${PACKAGES[0]}
 
 	msg install 4 'clearing package cache'
 	yes | arch-chroot "$MOUNTPOINT" pacman -Scc || true
@@ -375,6 +391,7 @@ EOD
 
 	return 0
 }
-main "$@"
+#main "$@"
+mkfstab "$@"
 
 # vim: ts=3 sw=0 sts=0
