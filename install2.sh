@@ -382,7 +382,7 @@ EOD
 	msg install 4 "installing additional packages for ${args[platform]}"
 	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
 
-	configure ${PACKAGES[0]}
+	configure "${PACKAGES[0]}"
 
 	msg install 4 'clearing package cache'
 	yes | arch-chroot "$MOUNTPOINT" pacman -Scc || true
