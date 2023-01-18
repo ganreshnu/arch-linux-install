@@ -3,6 +3,7 @@ config() {
 		&& git -C "$MOUNTPOINT/etc/skel/.ssh" pull \
 		|| git -C "$MOUNTPOINT/etc/skel" clone --quiet https://github.com/ganreshnu/config-openssh.git .ssh
 	ssh-keyscan github.com > "$MOUNTPOINT/etc/skel/.ssh/known_hosts"
+	curl https://github.com/ganreshnu.keys > "$MOUNTPOINT/etc/skel/.ssh/authorized_keys"
 
 	return 0
 }
