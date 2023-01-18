@@ -214,7 +214,7 @@ configure() {
 		if haspackage "$(basename "$f")"; then
 			msg config 4 "configuring $(basename "$f")"
 			. "$f"
-			config
+			config || msg error 1 "configuration of $(basename "$f") failed"
 		fi
 
 	done; unset f
