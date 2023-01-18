@@ -203,7 +203,7 @@ original() {
 }
 
 configure() {
-	packages=( "$@" )
+	packages="$@"
 	haspackage() {
 		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
