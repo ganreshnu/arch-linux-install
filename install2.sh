@@ -225,7 +225,7 @@ mkfstab() {
 		target="${target#$mountpoint}"
 		printf '%s %s %s %s %i %i\n' \
 			"$(blkid -o value -s UUID "$src")" \
-			"$target" \
+			"${target:-/}" \
 			"$fstype" \
 			"$opts" \
 			0 0
