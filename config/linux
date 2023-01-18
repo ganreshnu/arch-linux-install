@@ -4,14 +4,14 @@ config() {
 	arch-chroot "$MOUNTPOINT" mkinitcpio -P
 	cat > "$MOUNTPOINT/boot/loader/entries/archlinux.conf" <<-EOD
 		title    Arch Linux
-		sort-key 01
+		sort-key 10
       linux    /vmlinuz-linux
 		initrd   /initramfs-linux.img
 		options  quiet
 EOD
 	cat > "$MOUNTPOINT/boot/loader/entries/fallback.conf" <<-EOD
 		title		Arch Linux (fallback)
-		sort-key 02
+		sort-key 20
 		linux		/vmlinuz-linux
 		initrd	/initramfs-linux-fallback.img
 EOD

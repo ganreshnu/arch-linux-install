@@ -269,8 +269,8 @@ main() {
 	local BASE=(base iptables-nft polkit)
 	local PACKAGES=()
 	local DOCS=(man-db man-pages texinfo)
-	local CMDLINE=(sudo bash-completion git vim libfido2 openssh)
-	local KERNEL=(linux wireless-regdb mkinitcpio tpm2-tss)
+	local CMDLINE=(sudo bash-completion git vim openssh)
+	local KERNEL=(linux wireless-regdb mkinitcpio libfido2 tpm2-tss)
 
 
 	# show configuration and prompt to continue
@@ -302,7 +302,7 @@ main() {
 
 	case "${args[platform]}" in
 		'Virtual Machine' )
-			PACKAGES+=(hyperv firewalld dosfstools reflector btrfs-progs
+			PACKAGES+=(hyperv dosfstools reflector btrfs-progs
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the ethernet network
@@ -319,9 +319,12 @@ main() {
 			[IPv6AcceptRA]
 			RouteMetric=10
 EOD
+
+			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
 			;;
 		'MacBookAir5,2' )
-			PACKAGES+=(reflector firewalld dosfstools btrfs-progs
+			PACKAGES+=(reflector dosfstools btrfs-progs
+				intel-ucode
 				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}")
 
 			# setup the wireless network
@@ -338,6 +341,8 @@ EOD
 			[IPv6AcceptRA]
 			RouteMetric=10
 EOD
+
+			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
 			;;
 		'WSL' )
 			PACKAGES+=(reflector btrfs-progs arch-install-scripts
