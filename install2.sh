@@ -193,6 +193,15 @@ format() {
 	return 0
 }
 
+
+original() {
+	local file="$(arch-chroot "$MOUNTPOINT" readlink -f "$1")"
+	local pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
+	local url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
+
+	arch-chroot "$MOUNTPOINT" curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
+}
+
 configure() {
 	packages=( $@ )
 	haspackage() {
@@ -200,13 +209,6 @@ configure() {
 	}
 
 	msg install 4 "installing configurations"
-	original() {
-		local file="$(arch-chroot "$MOUNTPOINT" readlink -f "$1")"
-		local pkgname="$(arch-chroot "$MOUNTPOINT" pacman -Qoq "$file")"
-		local url="$(arch-chroot "$MOUNTPOINT" pacman -Sp "$pkgname")"
-
-		arch-chroot "$MOUNTPOINT" curl --silent "$url" | tar -x --zstd --to-stdout "${file#/}" > "$MOUNTPOINT/$1"
-	}
 	local here="$(dirname "$BASH_SOURCE")"
 	for f in "$here/config/"*; do
 		if haspackage "$(basename "$f")"; then
@@ -336,8 +338,8 @@ main() {
 EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
-#			original /etc/fstab
-
+			original /etc/fstab
+			mkfstab "$MOUNTPOINT" | column -t >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'MacBookAir5,2' )
 			PACKAGES+=(reflector dosfstools btrfs-progs
@@ -392,7 +394,6 @@ EOD
 
 	return 0
 }
-#main "$@"
-mkfstab "$@"
+main "$@"
 
 # vim: ts=3 sw=0 sts=0
