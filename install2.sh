@@ -209,7 +209,6 @@ configure() {
 	}
 
 	msg install 4 "installing configurations"
-	local here="$(dirname "$BASH_SOURCE")"
 	for f in "$here/config/"*; do
 		if haspackage "$(basename "$f")"; then
 			msg config 4 "configuring $(basename "$f")"
@@ -220,26 +219,29 @@ configure() {
 	done; unset f
 }
 
-mkfstab() {
-	local mountpoint="$@"
-	local mounts=$(findmnt --submounts --nofsroot --noheadings --output SOURCE,TARGET,FSTYPE,OPTIONS,FSROOT --canonicalize --evaluate --raw --notruncate $mountpoint)
-	echo "$mounts" | while read -r src target fstype opts fsroot; do
-		target="${target#$mountpoint}"
-		[[ $target == '/boot' ]] && continue
-		printf '%s %s %s %s %i %i\n' \
-			"UUID=$(blkid -o value -s UUID "$src")" \
-			"${target:-/}" \
-			"$fstype" \
-			"$opts" \
-			0 0
-	done
-}
+#mkfstab() {
+#	local mountpoint="$@"
+#	local mounts=$(findmnt --submounts --nofsroot --noheadings --output SOURCE,TARGET,FSTYPE,OPTIONS,FSROOT --canonicalize --evaluate --raw --notruncate $mountpoint)
+#	echo "$mounts" | while read -r src target fstype opts fsroot; do
+#		target="${target#$mountpoint}"
+#		[[ $target == '/boot' ]] && continue
+#
+#		[[ ! "$target" ]] && opts=$(sed '/,subvolid.*//g' <<< "$opts")
+#
+#		printf '%s %s %s %s %i %i\n' \
+#			"UUID=$(blkid -o value -s UUID "$src")" \
+#			"${target:-/}" \
+#			"$fstype" \
+#			"$opts" \
+#			0 0
+#	done
+#}
 
 #
 # define the main encapsulation function
 #
 main() {
-	
+	local here="$(dirname "$BASH_SOURCE")"
 	local answer=
 	confirm() {
 		read -p "$1 [Y/n] " answer
@@ -339,7 +341,7 @@ EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
 			original /etc/fstab
-			mkfstab "$MOUNTPOINT" | column -t >> "$MOUNTPOINT/etc/fstab"
+			"$here/mkfstab.sh" "$MOUNTPOINT" | column -t >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'MacBookAir5,2' )
 			PACKAGES+=(reflector dosfstools btrfs-progs
