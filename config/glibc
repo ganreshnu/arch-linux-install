@@ -1,5 +1,5 @@
 config() {
-	sed -i "/${args[lang]}/s/^#//g" "$MOUNTPOINT/etc/locale.gen"
+	sed -i "/${ARGS[lang]}/s/^#//g" "$MOUNTPOINT/etc/locale.gen"
 	arch-chroot "$MOUNTPOINT" locale-gen
 	
 	return 0

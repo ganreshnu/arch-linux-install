@@ -1,5 +1,5 @@
 config() {
-	[[ "${args[timezone]}" ]] && arch-chroot $MOUNTPOINT ln -sf "/usr/share/zoneinfo/${args[timezone]}" /etc/localtime
+	[[ "${ARGS[timezone]}" ]] && arch-chroot $MOUNTPOINT ln -sf "/usr/share/zoneinfo/${ARGS[timezone]}" /etc/localtime
 
 	return 0
 }

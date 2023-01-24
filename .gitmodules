@@ -1,0 +1,3 @@
+[submodule "script-util"]
+	path = script-util
+	url = git@github.com:ganreshnu/script-util.git

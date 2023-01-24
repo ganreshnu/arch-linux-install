@@ -1,9 +1,9 @@
 config() {
 	# set the hostname
-	echo "${args[hostname]}" > "$MOUNTPOINT/etc/hostname"
+	echo "${ARGS[hostname]}" > "$MOUNTPOINT/etc/hostname"
 
 	# set the system language
-	echo "LANG=${args[lang]}" > "$MOUNTPOINT/etc/locale.conf"
+	echo "LANG=${ARGS[lang]}" > "$MOUNTPOINT/etc/locale.conf"
 
 	# enable the networking services
 	arch-chroot "$MOUNTPOINT" /bin/bash <<-EOD

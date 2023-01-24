@@ -66,7 +66,6 @@ usage() {
 Usage: $(basename "$BASH_SOURCE") [OPTIONS] [DIRECTORY]
 
 Options:
-  --help                         Show this message and exit.
   --lang LANGUAGE                The system language. Defaults to \$LANG.
   --timezone TIMEZONE            The system timezone. Defaults to the current
                                  system's timezone.
@@ -75,123 +74,124 @@ Options:
   --platform DIRECTORY           The target platform from which to derive
                                  configuration.
   --mirrorlist                   Generate a mirrorlist.
+  --help                         Show this message and exit.
 
 Install an Arch Linux Distribution.
 EOD
 }
 
-declare -A args=(
+declare -A ARGS=(
 	[lang]="$LANG"
 	[timezone]="$(realpath --relative-to /usr/share/zoneinfo $(readlink /etc/localtime))"
 	[hostname]="jwux"
 	[platform]="$([[ -f /sys/class/dmi/id/product_name ]] && cat /sys/class/dmi/id/product_name)"
-	[mirrorlist]=no
+	[mirrorlist]=0
 )
 
-parseargs() {
-	local showusage=-1 value="" sc=0
-	getvalue() {
-		name="$1"; shift
-		if [[ $# -gt 1 && "$2" != -?* ]]; then
-			args["$name"]="$2"
-			sc=2
-		else
-			msg error 1 "$1 requires an argument"
-			showusage=1 sc=1
-		fi
-	}
-
-	while true; do
-		if [[ $# -gt 0 && "$1" == -* ]]; then
-			case "$1" in
-				--lang )
-					getvalue lang "$@"
-					shift $sc
-					;;
-				--timezone )
-					getvalue timezone "$@"
-					shift $sc
-					;;
-				--hostname )
-					getvalue hostname "$@"
-					shift $sc
-					;;
-				--platform )
-					getvalue platform "$@"
-					shift $sc
-					;;
-				--mirrorlist )
-					args[mirrorlist]=yes
-					shift
-					;;
-				--help )
-					showusage=0
-					shift
-					;;
-				-- )
-					shift
-					break
-					;;
-				* )
-					msg error 1 "unknown argument $1"
-					showusage=1
-					shift
-					;;
-			esac
-		else
-			break
-		fi
-	done
-	args[_]="$showusage $@"
-}
-
+#parseargs() {
+#	local showusage=-1 value="" sc=0
+#	getvalue() {
+#		name="$1"; shift
+#		if [[ $# -gt 1 && "$2" != -?* ]]; then
+#			args["$name"]="$2"
+#			sc=2
+#		else
+#			msg error 1 "$1 requires an argument"
+#			showusage=1 sc=1
+#		fi
+#	}
 #
-# define a message function
+#	while true; do
+#		if [[ $# -gt 0 && "$1" == -* ]]; then
+#			case "$1" in
+#				--lang )
+#					getvalue lang "$@"
+#					shift $sc
+#					;;
+#				--timezone )
+#					getvalue timezone "$@"
+#					shift $sc
+#					;;
+#				--hostname )
+#					getvalue hostname "$@"
+#					shift $sc
+#					;;
+#				--platform )
+#					getvalue platform "$@"
+#					shift $sc
+#					;;
+#				--mirrorlist )
+#					args[mirrorlist]=yes
+#					shift
+#					;;
+#				--help )
+#					showusage=0
+#					shift
+#					;;
+#				-- )
+#					shift
+#					break
+#					;;
+#				* )
+#					msg error 1 "unknown argument $1"
+#					showusage=1
+#					shift
+#					;;
+#			esac
+#		else
+#			break
+#		fi
+#	done
+#	args[_]="$showusage $@"
+#}
 #
-msg() {
-	local tag=$1 color=$2 
-	shift 2
-	>&2 printf "$(tput bold; tput setaf $color)%s:$(tput sgr0) %s\n" "$tag" "$@"
-}
-
-format() {
-	local swapuuid='0657fd6d-a4ab-43c4-84e5-0933c84b4f4f'
-	local rootuuid='4f68bce3-e8cd-4db1-96e7-fbcaf984b709'
-	local bootuuid='c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
-
-	local partitions=$(lsblk --noheadings --paths --raw --output PARTTYPE,NAME,FSTYPE,MOUNTPOINT)
-	getprop() {
-		echo "$partitions" | awk "\$1 == \"$1\" { print \$$2 }"
-	}
-
-	local mounted='' dev=''
-	dev="$(getprop $swapuuid 2)"
-	if [[  "$dev" ]]; then
-		[[ "$(getprop $swapuuid 3)" != 'swap' ]] && mkswap "$dev"
-		mounted="$(getprop $swapuuid 4)"
-		[[ "$mounted" ]] || swapon "$dev"
-	fi
-
-	dev="$(getprop $rootuuid 2)"
-	if [[ "$dev" ]]; then
-		[[ "$(getprop $rootuuid 3)" != 'ext4' ]] && mkfs.ext4 "$dev"
-		mounted="$(getprop $rootuuid 4)"
-		[[ "$mounted" ]] || mount "$dev" "$MOUNTPOINT"
-	fi
-
-	dev="$(getprop $bootuuid 2)"
-	if [[ "$dev" ]]; then
-		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$dev"
-		mounted="$(getprop $bootuuid 4)"
-		if [[ ! "$mounted" ]]; then
-			mkdir -p "$MOUNTPOINT/boot"
-			mount "$dev" "$MOUNTPOINT/boot"
-			bootctl --esp-path="$MOUNTPOINT/boot" install
-		fi
-	fi
-
-	return 0
-}
+##
+## define a message function
+##
+#msg() {
+#	local tag=$1 color=$2 
+#	shift 2
+#	>&2 printf "$(tput bold; tput setaf $color)%s:$(tput sgr0) %s\n" "$tag" "$@"
+#}
+#
+#format() {
+#	local swapuuid='0657fd6d-a4ab-43c4-84e5-0933c84b4f4f'
+#	local rootuuid='4f68bce3-e8cd-4db1-96e7-fbcaf984b709'
+#	local bootuuid='c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
+#
+#	local partitions=$(lsblk --noheadings --paths --raw --output PARTTYPE,NAME,FSTYPE,MOUNTPOINT)
+#	getprop() {
+#		echo "$partitions" | awk "\$1 == \"$1\" { print \$$2 }"
+#	}
+#
+#	local mounted='' dev=''
+#	dev="$(getprop $swapuuid 2)"
+#	if [[  "$dev" ]]; then
+#		[[ "$(getprop $swapuuid 3)" != 'swap' ]] && mkswap "$dev"
+#		mounted="$(getprop $swapuuid 4)"
+#		[[ "$mounted" ]] || swapon "$dev"
+#	fi
+#
+#	dev="$(getprop $rootuuid 2)"
+#	if [[ "$dev" ]]; then
+#		[[ "$(getprop $rootuuid 3)" != 'ext4' ]] && mkfs.ext4 "$dev"
+#		mounted="$(getprop $rootuuid 4)"
+#		[[ "$mounted" ]] || mount "$dev" "$MOUNTPOINT"
+#	fi
+#
+#	dev="$(getprop $bootuuid 2)"
+#	if [[ "$dev" ]]; then
+#		[[ "$(getprop $bootuuid 3)" != 'vfat' ]] && mkfs.fat -F 32 "$dev"
+#		mounted="$(getprop $bootuuid 4)"
+#		if [[ ! "$mounted" ]]; then
+#			mkdir -p "$MOUNTPOINT/boot"
+#			mount "$dev" "$MOUNTPOINT/boot"
+#			bootctl --esp-path="$MOUNTPOINT/boot" install
+#		fi
+#	fi
+#
+#	return 0
+#}
 
 
 original() {
@@ -209,7 +209,7 @@ configure() {
 	}
 
 	msg install 4 "installing configurations"
-	for f in "$here/config/"*; do
+	for f in "$HERE/config/"*; do
 		if haspackage "$(basename "$f")"; then
 			msg config 4 "configuring $(basename "$f")"
 			. "$f"
@@ -219,29 +219,13 @@ configure() {
 	done; unset f
 }
 
-#mkfstab() {
-#	local mountpoint="$@"
-#	local mounts=$(findmnt --submounts --nofsroot --noheadings --output SOURCE,TARGET,FSTYPE,OPTIONS,FSROOT --canonicalize --evaluate --raw --notruncate $mountpoint)
-#	echo "$mounts" | while read -r src target fstype opts fsroot; do
-#		target="${target#$mountpoint}"
-#		[[ $target == '/boot' ]] && continue
-#
-#		[[ ! "$target" ]] && opts=$(sed '/,subvolid.*//g' <<< "$opts")
-#
-#		printf '%s %s %s %s %i %i\n' \
-#			"UUID=$(blkid -o value -s UUID "$src")" \
-#			"${target:-/}" \
-#			"$fstype" \
-#			"$opts" \
-#			0 0
-#	done
-#}
-
 #
 # define the main encapsulation function
 #
 main() {
-	local here="$(dirname "$BASH_SOURCE")"
+	local HERE="$(dirname "$BASH_SOURCE")"
+	. "$HERE/script-util/pargs.sh"
+
 	local answer=
 	confirm() {
 		read -p "$1 [Y/n] " answer
@@ -252,8 +236,13 @@ main() {
 	#
 	# parse the arguments
 	#
-	parseargs "$@" && set -- ${args[_]} && unset args[_]
-	local showusage=$1; shift
+	local showusage=-1
+	if pargs usage "$@"; then
+		mapfile -t args <<< "${ARGS[_]}"
+		set -- "${args[@]}" && unset args ARGS[_]
+	else
+		[[ $? -eq 255 ]] && showusage=0 || showusage=$?
+	fi
 
 	local MOUNTPOINT='/mnt'
 	if [[ $# -gt 0 && "$1" ]]; then
@@ -293,15 +282,15 @@ main() {
 
 
 	# show configuration and prompt to continue
-	for key in "${!args[@]}"; do
-		printf '%s = %s\n' "$key" "${args[$key]}"
+	for key in "${!ARGS[@]}"; do
+		printf '%s = %s\n' "$key" "${ARGS[$key]}"
 	done
 	echo "MOUNTPOINT = $MOUNTPOINT"
 	confirm "continue to install?"
 	[[ "$answer" != 'y' ]] && return 2
 
 	# update the mirrorlist
-	if [[ "${args[mirrorlist]}" == yes ]]; then
+	if [[ ${ARGS[mirrorlist]} -eq 1 ]]; then
 		msg install 4 "updating the pacman mirrorlist"
 		reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
 	fi
@@ -319,7 +308,7 @@ main() {
 
 	configure glibc
 
-	case "${args[platform]}" in
+	case "${ARGS[platform]}" in
 		'Virtual Machine' )
 			PACKAGES+=(hyperv dosfstools reflector btrfs-progs
 				"${CMDLINE[@]}" "${KERNEL[@]}")
@@ -341,7 +330,7 @@ EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
 			original /etc/fstab
-			"$here/mkfstab.sh" "$MOUNTPOINT" | column -t >> "$MOUNTPOINT/etc/fstab"
+			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'MacBookAir5,2' )
 			PACKAGES+=(reflector dosfstools btrfs-progs
@@ -364,6 +353,8 @@ EOD
 EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
+			original /etc/fstab
+			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'WSL' )
 			PACKAGES+=(reflector btrfs-progs arch-install-scripts
@@ -376,12 +367,12 @@ EOD
 			;;
 		* )
 #			format 'fat'
-			msg error 1 "unknown platform ${args[platform]}"
+			msg error 1 "unknown platform ${ARGS[platform]}"
 			return 3
 			;;
 	esac
 
-	msg install 4 "installing additional packages for ${args[platform]}"
+	msg install 4 "installing additional packages for ${ARGS[platform]}"
 	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
 
 	configure "$(arch-chroot "$MOUNTPOINT" pacman -Qq)"
