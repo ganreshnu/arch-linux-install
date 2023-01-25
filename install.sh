@@ -126,7 +126,7 @@ main() {
 	#
 	local showusage=-1
 	if pargs usage "$@"; then
-		mapfile -t args <<< "${ARGS[_]}"
+		mapfile -s 1 -t args <<< "${ARGS[_]}"
 		set -- "${args[@]}" && unset args ARGS[_]
 	else
 		[[ $? -eq 255 ]] && showusage=0 || showusage=$?
@@ -142,7 +142,8 @@ main() {
 	# argument type validation goes here
 	#
 
-	[[ $# -gt 0 ]] && msg warn 3 "extra args: $@"
+	[[ $# -gt 0 ]] && msg warn 3 "$# extra args: \"$@\""
+	return 1
 	#
 	# show help if necessary
 	#
