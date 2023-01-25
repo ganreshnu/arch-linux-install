@@ -35,14 +35,14 @@ main() {
 	#
 	local showhelp=-1
 	if pargs usage "$@"; then
-		mapfile -t args <<< "${ARGS[_]}"
+		mapfile -s 1 -t args <<< "${ARGS[_]}"
 		set -- "${args[@]}" && unset args ARGS[_]
 	else
 		[[ $? -eq 255 ]] && showhelp=0 || showhelp=$?
 	fi
 
 	if [[ $# -lt 1 ]]; then
-		msg error 1 'must pass root filesystem device'
+		msg --tag error --color 1 'must pass root filesystem device'
 		return 1
 	fi
 
@@ -63,7 +63,6 @@ main() {
 	#
 	# argument value validation goes here
 	#
-
 
 	#
 	# script begins

@@ -102,12 +102,12 @@ configure() {
 		[[ "$packages" =~ (^|[[:space:]])$1([[:space:]]|$) ]]
 	}
 
-	msg install 4 "installing configurations"
+	msg --tag install --color 4 "installing configurations"
 	for f in "$HERE/config/"*; do
 		if haspackage "$(basename "$f")"; then
-			msg config 4 "configuring $(basename "$f")"
+			msg --tag config --color 4 "configuring $(basename "$f")"
 			. "$f"
-			config || msg error 1 "configuration of $(basename "$f") failed"
+			config || msg --tag error --color 1 "configuration of $(basename "$f") failed"
 		fi
 
 	done; unset f
@@ -120,6 +120,7 @@ main() {
 	local HERE="$(dirname "$BASH_SOURCE")"
 	. "$HERE/script-util/pargs.sh"
 	. "$HERE/script-util/confirm.sh"
+	. "$HERE/script-util/msg.sh"
 
 	#
 	# parse the arguments
@@ -142,8 +143,8 @@ main() {
 	# argument type validation goes here
 	#
 
-	[[ $# -gt 0 ]] && msg warn 3 "$# extra args: \"$@\""
-	return 1
+	[[ $# -gt 0 ]] && msg --tag warn --color 3 "$# extra args: \"$@\""
+
 	#
 	# show help if necessary
 	#
@@ -179,12 +180,12 @@ main() {
 
 	# update the mirrorlist
 	if [[ ${ARGS[mirrorlist]} -eq 1 ]]; then
-		msg install 4 "updating the pacman mirrorlist"
+		msg --tag install --color 4 "updating the pacman mirrorlist"
 		reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
 	fi
 
 	# bootstrap the install
-	msg install 4 "installing the base system"
+	msg --tag install --color 4 "installing the base system"
 	local answer=0
 	if [[ -x "$MOUNTPOINT/usr/bin/pacman" ]]; then
 		confirm 'base seems installed... reinstall?' || answer=$?
@@ -192,7 +193,7 @@ main() {
 	[[ $answer -eq 0 ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
 
 	# sync pacman
-	msg install 4 "syncing pacman"
+	msg --tag install --color 4 "syncing pacman"
 	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	configure glibc
@@ -255,23 +256,23 @@ EOD
 EOD
 			;;
 		* )
-			msg error 1 "unknown platform ${ARGS[platform]}"
+			msg --tag error --color 1 "unknown platform ${ARGS[platform]}"
 			return 3
 			;;
 	esac
 
-	msg install 4 "installing additional packages for ${ARGS[platform]}"
+	msg --tag install --color 4 "installing additional packages for ${ARGS[platform]}"
 	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
 
 	configure "$(arch-chroot "$MOUNTPOINT" pacman -Qq)"
 
-	msg install 4 'clearing package cache'
+	msg --tag install --color 4 'clearing package cache'
 	yes | arch-chroot "$MOUNTPOINT" pacman -Scc || true
 
-	msg install 4 'removing socket files'
+	msg --tag install --color 4 'removing socket files'
 	rm -f "$MOUNTPOINT/etc/pacman.d/gnupg/S.gpg-agent"*
 
-	msg install 1 'do not forget to add a user!'
+	msg --color 1 'do not forget to add a user!'
 
 	return 0
 }
