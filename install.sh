@@ -188,7 +188,7 @@ main() {
 	if [[ -x "$MOUNTPOINT/usr/bin/pacman" ]]; then
 		confirm 'base seems installed... reinstall?' || answer=$?
 	fi
-	[[ $answer ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
+	[[ $answer -eq 0 ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
 
 	# sync pacman
 	msg install 4 "syncing pacman"
