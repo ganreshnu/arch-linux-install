@@ -119,13 +119,7 @@ configure() {
 main() {
 	local HERE="$(dirname "$BASH_SOURCE")"
 	. "$HERE/script-util/pargs.sh"
-
-	local answer=
-	confirm() {
-		read -p "$1 [Y/n] " answer
-		[[ "$answer" =~ y|Y || "$answer" == '' ]] \
-			&& answer='y' || answer='n'
-	}
+	. "$HERE/script-util/confirm.sh"
 
 	#
 	# parse the arguments
@@ -180,8 +174,7 @@ main() {
 		printf '%s = %s\n' "$key" "${ARGS[$key]}"
 	done
 	echo "MOUNTPOINT = $MOUNTPOINT"
-	confirm "continue to install?"
-	[[ "$answer" != 'y' ]] && return 2
+	confirm "continue to install?" || return 2
 
 	# update the mirrorlist
 	if [[ ${ARGS[mirrorlist]} -eq 1 ]]; then
@@ -191,10 +184,11 @@ main() {
 
 	# bootstrap the install
 	msg install 4 "installing the base system"
+	local answer=0
 	if [[ -x "$MOUNTPOINT/usr/bin/pacman" ]]; then
-		confirm 'base seems installed... reinstall?'
+		confirm 'base seems installed... reinstall?' || answer=$?
 	fi
-	[[ "$answer" == 'y' ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
+	[[ $answer ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
 
 	# sync pacman
 	msg install 4 "syncing pacman"
