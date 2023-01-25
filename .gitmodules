@@ -1,3 +1,4 @@
 [submodule "script-util"]
 	path = script-util
 	url = https://github.com/ganreshnu/script-util.git
+	branch = master
