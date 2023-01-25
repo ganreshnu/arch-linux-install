@@ -1,3 +1,5 @@
 [submodule "script-util"]
 	path = script-util
 	url = git@github.com:ganreshnu/script-util.git
+[submodule "script-util/"]
+	url = https://github.com/ganreshnu/script-util.git
