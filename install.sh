@@ -181,7 +181,7 @@ main() {
 	# update the mirrorlist
 	if [[ ${ARGS[mirrorlist]} -eq 1 ]]; then
 		msg --tag install --color 4 "updating the pacman mirrorlist"
-		reflector --save /etc/pacman.d/mirrorlist --country US --age 1 --score 6 --fastest 3 --protocol 'https'
+		curl -s "https://archlinux.org/mirrorlist/?country=US&protocol=https&ip_version=6&use_mirror_status=on" | sed -e 's/^#Server/Server/' > /etc/pacman.d/mirrorlist
 	fi
 
 	# bootstrap the install
@@ -200,7 +200,7 @@ main() {
 
 	case "${ARGS[platform]}" in
 		'Virtual Machine' )
-			PACKAGES+=(hyperv dosfstools reflector btrfs-progs
+			PACKAGES+=(hyperv dosfstools btrfs-progs
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the ethernet network
@@ -223,7 +223,7 @@ EOD
 			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'MacBookAir5,2' )
-			PACKAGES+=(reflector dosfstools btrfs-progs
+			PACKAGES+=(dosfstools btrfs-progs
 				intel-ucode
 				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}")
 
@@ -247,7 +247,7 @@ EOD
 			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'WSL' )
-			PACKAGES+=(reflector btrfs-progs arch-install-scripts
+			PACKAGES+=(btrfs-progs arch-install-scripts
 				"${CMDLINE[@]}" "${DOCS[@]}")
 
 			cat > "$MOUNTPOINT/etc/wsl.conf" <<-'EOD'
