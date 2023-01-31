@@ -29,6 +29,7 @@ main() {
 	# include the util functions
 	#
 	. "$HERE/script-util/pargs.sh"
+	. "$HERE/script-util/msg.sh"
 
 	#
 	# parse arguments
