@@ -169,6 +169,12 @@ main() {
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim openssh)
 	local KERNEL=(linux wireless-regdb mkinitcpio libfido2 tpm2-tss)
+	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse pipewire-docs \
+		wireplumber wireplumber-docs)
+	local VIDEO=()
+	local DESKTOP=(bemenu-wayland libva libva-utils vulkan-mesa-layers mako \
+		noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
+		sway swaybg swayidle swaylock)
 
 
 	# show configuration and prompt to continue
@@ -224,8 +230,8 @@ EOD
 			;;
 		'MacBookAir5,2' )
 			PACKAGES+=(dosfstools btrfs-progs
-				intel-ucode
-				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}")
+				intel-ucode vulkan-intel libva-intel-driver
+				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}" "${AUDIO[@]}")
 
 			# setup the wireless network
 			cat > "$MOUNTPOINT/etc/systemd/network/default.network" <<-'EOD'

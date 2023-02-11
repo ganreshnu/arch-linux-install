@@ -12,9 +12,6 @@ config() {
 EOD
 	ln -sf '/run/systemd/resolve/stub-resolv.conf' "$MOUNTPOINT/etc/resolv.conf"
 
-	# setup the user environment.d
-	echo 'eval "export $(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)"' > "$MOUNTPOINT/etc/profile.d/user-environment-d.sh"
-
 	return 0
 }
 

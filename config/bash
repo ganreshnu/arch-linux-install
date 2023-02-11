@@ -4,7 +4,9 @@ config() {
 		&& git -C "$MOUNTPOINT/etc/skel/.config/bash" pull \
 		|| git -C "$MOUNTPOINT/etc/skel/.config" clone --quiet https://github.com/ganreshnu/config-bash.git bash
 
-	cat > "$MOUNTPOINT/etc/profile.d/bash-config-profiles.sh" <<-'EOD'
+	# insert into .bash_profile
+	original '/etc/skel/.bash_profile'
+	cat <<-'EOD' | awk '/^\[\[ -f ~\/\.bashrc \]\] && \. ~\/\.bashrc$/ { system("cat /dev/stdin"); print }' "$MOUNTPOINT/etc/skel/.bash_profile" > "$MOUNTPOINT/etc/skel/.bash_profile"
 	for prof in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/.profile; do
 		[[ -r "$prof" ]] && . "$prof"
 	done
