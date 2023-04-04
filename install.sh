@@ -172,13 +172,15 @@ main() {
 	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse pipewire-docs \
 		wireplumber wireplumber-docs)
 	local VIDEO=(libva libva-utils libva-vdpau-driver vulkan-mesa-layers)
+	local PRINTING=(cups)
 	local DESKTOP=("${VIDEO[@]}" "${AUDIO[@]}" bemenu-wayland pinentry-bemenu mako \
 		libva libva-utils vulkan-mesa-layers \
 		noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
 		wayland sway swaybg swayidle swaylock \
-		xdg-desktop-portal-wlr xdg-desktop-portal-gtk "${DOCS[@]}")
+		xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
+		"${DOCS[@]}" "${PRINTING[@]}")
 	local WIFI=(iwd wireless-regdb)
-	local BLUETOOTH=()
+	local BLUETOOTH=(bluez bluez-utils bluez-cups)
 
 
 	# show configuration and prompt to continue
