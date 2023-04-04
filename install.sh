@@ -168,13 +168,17 @@ main() {
 	local PACKAGES=()
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim openssh arch-install-scripts)
-	local KERNEL=(linux wireless-regdb mkinitcpio libfido2 tpm2-tss)
+	local KERNEL=(linux linux-firmware mkinitcpio libfido2 tpm2-tss btrfs-progs)
 	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse pipewire-docs \
 		wireplumber wireplumber-docs)
-	local VIDEO=()
-	local DESKTOP=(bemenu-wayland libva libva-utils vulkan-mesa-layers mako \
+	local VIDEO=(libva libva-utils libva-vdpau-driver vulkan-mesa-layers)
+	local DESKTOP=("${VIDEO[@]}" "${AUDIO[@]}" bemenu-wayland pinentry-bemenu mako \
+		libva libva-utils vulkan-mesa-layers \
 		noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
-		sway swaybg swayidle swaylock)
+		wayland sway swaybg swayidle swaylock \
+		xdg-desktop-portal-wlr xdg-desktop-portal-gtk "${DOCS[@]}")
+	local WIFI=(iwd wireless-regdb)
+	local BLUETOOTH=()
 
 
 	# show configuration and prompt to continue
@@ -206,7 +210,7 @@ main() {
 
 	case "${ARGS[platform]}" in
 		'Virtual Machine' )
-			PACKAGES+=(hyperv dosfstools btrfs-progs
+			PACKAGES+=(hyperv dosfstools
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the ethernet network
@@ -216,12 +220,7 @@ main() {
 
 			[Network]
 			DHCP=yes
-
-			[DHCPv4]
-			RouteMetric=20
-
-			[IPv6AcceptRA]
-			RouteMetric=10
+			IPv6AcceptRA=yes
 EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
@@ -229,9 +228,11 @@ EOD
 			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'MacBookAir5,2' )
-			PACKAGES+=(dosfstools btrfs-progs
+			# intel-media-driver for newer devices
+			PACKAGES+=(dosfstools
 				intel-ucode vulkan-intel libva-intel-driver
-				"${CMDLINE[@]}" "${KERNEL[@]}" "${DOCS[@]}" "${AUDIO[@]}")
+				"${WIFI[@]}" "${DESKTOP[@]}"
+				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the wireless network
 			cat > "$MOUNTPOINT/etc/systemd/network/default.network" <<-'EOD'
@@ -240,12 +241,7 @@ EOD
 
 			[Network]
 			DHCP=yes
-
-			[DHCPv4]
-			RouteMetric=20
-
-			[IPv6AcceptRA]
-			RouteMetric=10
+			IPv6AcceptRA=yes
 EOD
 
 			arch-chroot "$MOUNTPOINT" systemctl enable nftables.service
