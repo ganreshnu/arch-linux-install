@@ -167,7 +167,7 @@ main() {
 	local BASE=(base iptables-nft polkit)
 	local PACKAGES=()
 	local DOCS=(man-db man-pages texinfo)
-	local CMDLINE=(sudo bash-completion git vim openssh)
+	local CMDLINE=(sudo bash-completion git vim openssh arch-install-scripts)
 	local KERNEL=(linux wireless-regdb mkinitcpio libfido2 tpm2-tss)
 	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse pipewire-docs \
 		wireplumber wireplumber-docs)
@@ -253,13 +253,16 @@ EOD
 			column -t /tmp/fstab.btrfs >> "$MOUNTPOINT/etc/fstab"
 			;;
 		'WSL' )
-			PACKAGES+=(btrfs-progs arch-install-scripts
+			PACKAGES+=(btrfs-progs
 				"${CMDLINE[@]}" "${DOCS[@]}")
 
 			cat > "$MOUNTPOINT/etc/wsl.conf" <<-'EOD'
 			[boot]
 			systemd=true
 EOD
+			;;
+		'Desktop' )
+			PACKAGES+=("${BASE[@]}" "${CMDLINE[@]}")
 			;;
 		* )
 			msg --tag error --color 1 "unknown platform ${ARGS[platform]}"
