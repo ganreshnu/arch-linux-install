@@ -168,9 +168,10 @@ main() {
 	local PACKAGES=()
 	local DOCS=(man-db man-pages texinfo)
 	local CMDLINE=(sudo bash-completion git vim openssh arch-install-scripts)
-	local KERNEL=(linux linux-firmware mkinitcpio libfido2 tpm2-tss btrfs-progs)
-	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse pipewire-docs \
-		wireplumber wireplumber-docs)
+	local KERNEL=(linux linux-firmware mkinitcpio libfido2 tpm2-tss btrfs-progs dosfstools)
+	# pipewire-docs wireplumber-docs
+	local AUDIO=(pipewire pipewire-alsa pipewire-audio pipewire-jack pipewire-pulse \
+		wireplumber)
 	local VIDEO=(libva libva-utils libva-vdpau-driver vulkan-mesa-layers)
 	local PRINTING=(cups)
 	local DESKTOP=("${VIDEO[@]}" "${AUDIO[@]}" bemenu-wayland pinentry-bemenu mako \
@@ -178,7 +179,8 @@ main() {
 		noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
 		wayland sway swaybg swayidle swaylock \
 		xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
-		"${DOCS[@]}" "${PRINTING[@]}")
+		flatpak foot \
+		"${DOCS[@]}" "${PRINTING[@]}" "${CMDLINE[@]}")
 	local WIFI=(iwd wireless-regdb)
 	local BLUETOOTH=(bluez bluez-utils bluez-cups)
 
@@ -190,7 +192,7 @@ main() {
 	echo "MOUNTPOINT = $MOUNTPOINT"
 	confirm "continue to install?" || return 2
 
-	# update the mirrorlist
+	# update the host mirrorlist
 	if [[ ${ARGS[mirrorlist]} -eq 1 ]]; then
 		msg --tag install --color 4 "updating the pacman mirrorlist"
 		curl -s "https://archlinux.org/mirrorlist/?country=US&protocol=https&ip_version=6&use_mirror_status=on" | sed -e 's/^#Server/Server/' > /etc/pacman.d/mirrorlist
@@ -202,17 +204,13 @@ main() {
 	if [[ -x "$MOUNTPOINT/usr/bin/pacman" ]]; then
 		confirm 'base seems installed... reinstall?' || answer=$?
 	fi
-	[[ $answer -eq 0 ]] && pacstrap -iK "$MOUNTPOINT" "${BASE[@]}"
-
-	# sync pacman
-	msg --tag install --color 4 "syncing pacman"
-	arch-chroot "$MOUNTPOINT" pacman -Sy
+	[[ $answer -eq 0 ]] && pacstrap -ciK "$MOUNTPOINT" "${BASE[@]}"
 
 	configure glibc
 
 	case "${ARGS[platform]}" in
 		'Virtual Machine' )
-			PACKAGES+=(hyperv dosfstools
+			PACKAGES+=(hyperv
 				"${CMDLINE[@]}" "${KERNEL[@]}")
 
 			# setup the ethernet network
@@ -231,10 +229,8 @@ EOD
 			;;
 		'MacBookAir5,2' )
 			# intel-media-driver for newer devices
-			PACKAGES+=(dosfstools
-				intel-ucode vulkan-intel libva-intel-driver
-				"${WIFI[@]}" "${DESKTOP[@]}"
-				"${CMDLINE[@]}" "${KERNEL[@]}")
+			PACKAGES+=(intel-ucode vulkan-intel libva-intel-driver
+				"${KERNEL[@]}" "${WIFI[@]}" "${BLUETOOTH[@]}" "${DESKTOP[@]}")
 
 			# setup the wireless network
 			cat > "$MOUNTPOINT/etc/systemd/network/default.network" <<-'EOD'
@@ -259,14 +255,15 @@ EOD
 			systemd=true
 EOD
 			;;
-		'Desktop' )
-			PACKAGES+=("${BASE[@]}" "${CMDLINE[@]}")
-			;;
 		* )
 			msg --tag error --color 1 "unknown platform ${ARGS[platform]}"
 			return 3
 			;;
 	esac
+
+	# sync pacman
+	msg --tag install --color 4 "syncing pacman"
+	arch-chroot "$MOUNTPOINT" pacman -Sy
 
 	msg --tag install --color 4 "installing additional packages for ${ARGS[platform]}"
 	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
