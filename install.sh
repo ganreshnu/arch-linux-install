@@ -261,12 +261,8 @@ EOD
 			;;
 	esac
 
-	# sync pacman
-	msg --tag install --color 4 "syncing pacman"
-	arch-chroot "$MOUNTPOINT" pacman -Sy
-
 	msg --tag install --color 4 "installing additional packages for ${ARGS[platform]}"
-	arch-chroot "$MOUNTPOINT" pacman -S --needed "${PACKAGES[@]}"
+	arch-chroot "$MOUNTPOINT" pacman -Sy --needed "${PACKAGES[@]}"
 
 	configure "$(arch-chroot "$MOUNTPOINT" pacman -Qq)"
 
