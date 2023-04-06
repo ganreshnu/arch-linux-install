@@ -175,7 +175,6 @@ main() {
 	local VIDEO=(libva libva-utils libva-vdpau-driver vulkan-mesa-layers)
 	local PRINTING=(cups)
 	local DESKTOP=("${VIDEO[@]}" "${AUDIO[@]}" bemenu-wayland pinentry-bemenu mako \
-		libva libva-utils vulkan-mesa-layers \
 		noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra \
 		wayland sway swaybg swayidle swaylock \
 		xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
