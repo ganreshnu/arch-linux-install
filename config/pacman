@@ -1,0 +1,58 @@
+config() {
+	cat > "$MOUNTPOINT/etc/systemd/system/archlinux-mirrorlist-wkd-update.service" <<-'EOD'
+	[Unit]
+	Description=Update the pacman mirrorlist
+	ConditionPathIsReadWrite=/etc/pacman.d/mirrorlist
+	Wants=network-online.target
+	After=network-online.target nss-lookup.target
+	StartLimitIntervalSec=1hour
+	StartLimitBurst=3
+
+	[Service]
+	Type=oneshot
+	ExecStart=bash -c 'curl -s "https://archlinux.org/mirrorlist/?country=US&protocol=https&ip_version=6&use_mirror_status=on" | sed -e "s/^#Server/Server/" > /etc/pacman.d/mirrorlist'
+	Restart=on-failure
+	RestartSec=5minutes
+	CapabilityBoundingSet=
+	DeviceAllow=
+	LockPersonality=true
+	MemoryDenyWriteExecute=true
+	NoNewPrivileges=true
+	PrivateDevices=true
+	PrivateTmp=true
+	ProtectClock=true
+	ProtectControlGroups=true
+	ProtectHome=true
+	ProtectHostname=true
+	ProtectKernelLogs=true
+	ProtectKernelModules=true
+	ProtectKernelTunables=true
+	ProtectProc=noaccess
+	ProtectSystem=strict
+	ReadWritePaths=/etc/pacman.d/mirrorlist
+	RemoveIPC=true
+	RestrictAddressFamilies=~AF_PACKET AF_NETLINK
+	RestrictNamespaces=true
+	RestrictRealtime=true
+	RestrictSUIDSGID=true
+	SystemCallArchitectures=native
+	SystemCallFilter=@system-service
+	SystemCallFilter=~@resources
+EOD
+	cat > "$MOUNTPOINT/etc/systemd/system/archlinux-mirrorlist-wkd-update.timer" <<-'EOD'
+	[Unit]
+	Description=Update the pacman mirrorlist regularly
+
+	[Timer]
+	OnCalendar=weekly
+	Persistent=true
+	RandomizedDelaySec=1week
+
+	[Install]
+	WantedBy=timers.target
+EOD
+	arch-chroot $MOUNTPOINT systemctl enable archlinux-mirrorlist-wkd-update.timer
+	arch-chroot $MOUNTPOINT systemctl enable archlinux-keyring-wkd-sync.timer
+	return 0
+}
+# vim: ft=bash
